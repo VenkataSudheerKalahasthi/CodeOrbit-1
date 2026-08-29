@@ -16,6 +16,7 @@
             pos: { top: '0%', left: '50%' },
             color: '#00f0ff',
             glow: 'rgba(0, 240, 255, 0.4)',
+            darkVariant: true,
             svg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>`
         },
         {
@@ -34,6 +35,7 @@
             pos: { top: '41.3%', left: '99.2%' },
             color: '#ff6b00',
             glow: 'rgba(255, 107, 0, 0.4)',
+            darkVariant: true,
             svg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="3"/><circle cx="18" cy="12" r="3"/><path d="M9 12h6"/><path d="m12 9 3 3-3 3"/></svg>`
         },
         {
@@ -99,6 +101,7 @@
             pos: { top: '0%', left: '50%' },
             color: '#ef4444',
             glow: 'rgba(239, 68, 68, 0.4)',
+            darkVariant: true,
             svg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>`
         },
         {
@@ -155,6 +158,7 @@
             pos: { top: '14.6%', left: '85.4%' },
             color: '#2563eb',
             glow: 'rgba(37, 99, 235, 0.4)',
+            darkVariant: true,
             svg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>`
         },
         {
@@ -182,6 +186,7 @@
             pos: { top: '14.6%', left: '14.6%' },
             color: '#f59e0b',
             glow: 'rgba(245, 158, 11, 0.4)',
+            darkVariant: true,
             svg: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`
         }
     ];
@@ -189,7 +194,7 @@
     function renderRingItems(ringType) {
         const ringItems = dsaTopics.filter(t => t.ring === ringType);
         return ringItems.map(item => `
-            <div class="orbital-item"
+            <div class="orbital-item${item.darkVariant ? ' orbital-item--dark' : ''}"
                  style="top: ${item.pos.top}; left: ${item.pos.left}; margin-top: -22px; margin-left: -22px; --topic-color: ${item.color}; --topic-glow: ${item.glow}; color: ${item.color};"
                  data-topic="${item.name}"
                  data-url="${item.url}"
@@ -216,10 +221,21 @@
                 <circle cx="300" cy="300" r="110" class="circles-path" />
             </svg>
 
-            <!-- Central Core Orb -->
+            <!-- Central Core Orb — expands to full ticker pill on hover in light theme -->
             <div class="circles-center-core" title="Ctrl+Alt+Career Core" aria-label="Ctrl+Alt+Career Core">
-                <span class="circles-core-logo">&lt;/&gt;</span>
-                <span class="circles-core-text">Ctrl+Alt</span>
+                <!-- Left ticker — revealed on hover (light theme only) -->
+                <div class="orbit-hover-left" aria-hidden="true">
+                    <span class="ohv-word">TREES</span><span class="ohv-dot">•</span><span class="ohv-word">GRAPHS</span><span class="ohv-dot">•</span><span class="ohv-word">DP</span><span class="ohv-dot">•</span><span class="ohv-word ohv-highlight">GREEDY</span>
+                </div>
+                <!-- Center icon group — always visible -->
+                <div class="circles-core-icon-group">
+                    <span class="circles-core-logo">&lt;/&gt;</span>
+                    <span class="circles-core-text">Ctrl+Alt</span>
+                </div>
+                <!-- Right ticker — revealed on hover (light theme only) -->
+                <div class="orbit-hover-right" aria-hidden="true">
+                    <span class="ohv-word">HEAPS</span><span class="ohv-dot">•</span><span class="ohv-word">TRIES</span><span class="ohv-dot">•</span><span class="ohv-word">ARRAYS</span>
+                </div>
             </div>
 
             <!-- Outer Ring (Radius 270px, 9 DSA Topics) -->
@@ -237,6 +253,149 @@
                 ${renderRingItems('inner')}
             </div>
         `;
+
+
+        // Create Dark-Theme Orbital HUD Tooltip singleton if not present
+        let hudTooltip = document.getElementById('orbital-hud-tooltip');
+        if (!hudTooltip) {
+            hudTooltip = document.createElement('div');
+            hudTooltip.id = 'orbital-hud-tooltip';
+            hudTooltip.className = 'orbital-hud-tooltip';
+            hudTooltip.setAttribute('role', 'tooltip');
+            hudTooltip.setAttribute('aria-hidden', 'true');
+            hudTooltip.innerHTML = `
+                <div class="orbital-hud-header">
+                    <span class="orbital-hud-name" id="orbital-hud-name"></span>
+                    <span class="orbital-hud-arrow" aria-hidden="true">↗</span>
+                </div>
+                <div class="orbital-hud-count" id="orbital-hud-count"></div>
+                <div class="orbital-hud-track">
+                    <div class="orbital-hud-fill" id="orbital-hud-fill"></div>
+                </div>
+                <div class="orbital-hud-pct" id="orbital-hud-pct"></div>
+            `;
+            document.body.appendChild(hudTooltip);
+        }
+
+        function updateHudPosition(circleEl) {
+            if (!hudTooltip) return;
+            const rect = circleEl.getBoundingClientRect();
+            const tipRect = hudTooltip.getBoundingClientRect();
+            const tipW = tipRect.width || 156;
+            const tipH = tipRect.height || 72;
+
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const vpW = window.innerWidth;
+            const vpH = window.innerHeight;
+
+            const containerRect = container.getBoundingClientRect();
+            const ccx = containerRect.left + containerRect.width / 2;
+            const ccy = containerRect.top + containerRect.height / 2;
+
+            // Outward vector from center core
+            const dx = cx - ccx;
+            const dy = cy - ccy;
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+            const dirX = dx / dist;
+            const dirY = dy / dist;
+
+            // Radial outward offset
+            const offset = (rect.width / 2) + 16;
+            let targetLeft = cx + (dirX * offset) - (tipW / 2);
+            let targetTop = cy + (dirY * offset) - (tipH / 2);
+
+            // Viewport boundary adjustments
+            if (targetLeft + tipW > vpW - 12) {
+                targetLeft = rect.left - tipW - 10;
+            }
+            if (targetLeft < 12) {
+                targetLeft = rect.right + 10;
+            }
+            if (targetTop < 12) {
+                targetTop = rect.bottom + 10;
+            }
+            if (targetTop + tipH > vpH - 12) {
+                targetTop = rect.top - tipH - 10;
+            }
+
+            // Viewport clamping
+            targetLeft = Math.max(10, Math.min(targetLeft, vpW - tipW - 10));
+            targetTop = Math.max(10, Math.min(targetTop, vpH - tipH - 10));
+
+            hudTooltip.style.left = `${Math.round(targetLeft)}px`;
+            hudTooltip.style.top = `${Math.round(targetTop)}px`;
+        }
+
+        let activeHoveredCircle = null;
+        let hudRafId = null;
+
+        function trackHudPosition() {
+            if (activeHoveredCircle && hudTooltip && hudTooltip.classList.contains('active')) {
+                updateHudPosition(activeHoveredCircle);
+                hudRafId = requestAnimationFrame(trackHudPosition);
+            }
+        }
+
+        // Hover Handlers for Dark-Theme-Only HUD Progress Tooltip & Pause-on-Hover
+        container.querySelectorAll('.orbital-item[data-topic]').forEach(item => {
+            const topicName = item.getAttribute('data-topic');
+
+            item.addEventListener('pointerenter', () => {
+                // Immediately pause orbital rotation on hover across all rings and items
+                container.classList.add('orbit-paused');
+
+                // Strictly DARK THEME ONLY for HUD progress tooltip
+                if (document.body.classList.contains('light-theme')) return;
+
+                const progress = (typeof UIManager !== 'undefined' && UIManager.getTopicProgress)
+                    ? UIManager.getTopicProgress(topicName)
+                    : { topic: topicName, total: 0, completed: 0, percentage: 0 };
+
+                const nameEl = document.getElementById('orbital-hud-name');
+                const countEl = document.getElementById('orbital-hud-count');
+                const fillEl = document.getElementById('orbital-hud-fill');
+                const pctEl = document.getElementById('orbital-hud-pct');
+
+                if (nameEl) nameEl.textContent = topicName;
+                if (countEl) countEl.textContent = `${progress.completed} / ${progress.total} Problems`;
+                if (fillEl) fillEl.style.width = `${progress.percentage}%`;
+                if (pctEl) pctEl.textContent = `${progress.percentage}% Completed`;
+
+                const itemColor = item.style.getPropertyValue('--topic-color') || '#00f0ff';
+                const itemGlow = item.style.getPropertyValue('--topic-glow') || 'rgba(0, 240, 255, 0.4)';
+
+                hudTooltip.style.setProperty('--hud-color', itemColor);
+                hudTooltip.style.setProperty('--hud-glow', itemGlow);
+
+                activeHoveredCircle = item;
+                updateHudPosition(item);
+                hudTooltip.classList.add('active');
+
+                if (hudRafId) cancelAnimationFrame(hudRafId);
+                hudRafId = requestAnimationFrame(trackHudPosition);
+            });
+
+            item.addEventListener('pointerleave', () => {
+                // Resume orbital rotation
+                container.classList.remove('orbit-paused');
+
+                activeHoveredCircle = null;
+                if (hudRafId) {
+                    cancelAnimationFrame(hudRafId);
+                    hudRafId = null;
+                }
+                if (hudTooltip) {
+                    hudTooltip.classList.remove('active');
+                }
+            });
+        });
+
+        window.addEventListener('scroll', () => {
+            if (activeHoveredCircle && hudTooltip && hudTooltip.classList.contains('active')) {
+                updateHudPosition(activeHoveredCircle);
+            }
+        }, { passive: true });
 
         // Bind Click Handlers for GeeksforGeeks navigation
         container.querySelectorAll('.orbital-item[data-url]').forEach(item => {

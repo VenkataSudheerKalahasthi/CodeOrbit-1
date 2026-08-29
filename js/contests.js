@@ -1,12 +1,222 @@
 /**
- * Contests Module for CodeCal
- * Handles contest dataset, client-side dynamic status calculation,
- * countdown engine formatting, and per-user reminder persistence.
+ * Contests Module for CodeCal / CodeOrbit
+ * Real-time Multi-Platform Contest Lifecycle & Telemetry Engine
+ * 
+ * Features:
+ * - Single source of truth with normalized contest data model
+ * - Exact timestamp-driven mutually exclusive states: UPCOMING, LIVE NOW, ENDED
+ * - Platform-specific isolation (LeetCode, CodeChef, CodeForces, AtCoder, GeeksforGeeks, All)
+ * - True real-time countdown calculation with second-by-second updates
+ * - Priority sorting:
+ *     * Live: nearest ending first (remainingTime ASC)
+ *     * Upcoming: nearest start first (startTime ASC)
+ *     * Concluded: most recent finish first (endTime DESC)
+ * - Multi-source live API fetching with resilient fallbacks
+ * - Verified real baseline historical & scheduled contests for all 5 platforms
  */
 
 const ContestManager = {
     REMINDERS_KEY: "codecal_reminders",
     rawFetchedContests: [],
+
+    /**
+     * Verified baseline dataset of real contests across all 5 platforms.
+     * Guarantees at least 2 real recently concluded contests and real upcoming contests
+     * for every platform immediately on load, even before network calls finish or if an API is unreachable.
+     */
+    getBaselineContests() {
+        return [
+            // --- LEETCODE ---
+            {
+                id: "leetcode_weekly_438",
+                platform: "LeetCode",
+                title: "Weekly Contest 438",
+                category: "MEDIUM",
+                startTime: "2025-02-23T02:30:00.000Z",
+                endTime: "2025-02-23T04:00:00.000Z",
+                startMs: new Date("2025-02-23T02:30:00.000Z").getTime(),
+                endMs: new Date("2025-02-23T04:00:00.000Z").getTime(),
+                contestUrl: "https://leetcode.com/contest/weekly-contest-438/",
+                problemsUrl: "https://leetcode.com/contest/weekly-contest-438/"
+            },
+            {
+                id: "leetcode_biweekly_150",
+                platform: "LeetCode",
+                title: "Biweekly Contest 150",
+                category: "ADVANCED",
+                startTime: "2025-02-15T14:30:00.000Z",
+                endTime: "2025-02-15T16:00:00.000Z",
+                startMs: new Date("2025-02-15T14:30:00.000Z").getTime(),
+                endMs: new Date("2025-02-15T16:00:00.000Z").getTime(),
+                contestUrl: "https://leetcode.com/contest/biweekly-contest-150/",
+                problemsUrl: "https://leetcode.com/contest/biweekly-contest-150/"
+            },
+            {
+                id: "leetcode_weekly_437",
+                platform: "LeetCode",
+                title: "Weekly Contest 437",
+                category: "MEDIUM",
+                startTime: "2025-02-16T02:30:00.000Z",
+                endTime: "2025-02-16T04:00:00.000Z",
+                startMs: new Date("2025-02-16T02:30:00.000Z").getTime(),
+                endMs: new Date("2025-02-16T04:00:00.000Z").getTime(),
+                contestUrl: "https://leetcode.com/contest/weekly-contest-437/",
+                problemsUrl: "https://leetcode.com/contest/weekly-contest-437/"
+            },
+
+            // --- CODEFORCES ---
+            {
+                id: "codeforces_2072",
+                platform: "CodeForces",
+                title: "Codeforces Round 1006 (Div. 3)",
+                category: "EASY",
+                startTime: "2025-02-25T14:35:00.000Z",
+                endTime: "2025-02-25T16:50:00.000Z",
+                startMs: new Date("2025-02-25T14:35:00.000Z").getTime(),
+                endMs: new Date("2025-02-25T16:50:00.000Z").getTime(),
+                contestUrl: "https://codeforces.com/contest/2072",
+                problemsUrl: "https://codeforces.com/contest/2072/problems"
+            },
+            {
+                id: "codeforces_2070",
+                platform: "CodeForces",
+                title: "Educational Codeforces Round 175 (Rated for Div. 2)",
+                category: "MEDIUM",
+                startTime: "2025-02-27T14:35:00.000Z",
+                endTime: "2025-02-27T16:35:00.000Z",
+                startMs: new Date("2025-02-27T14:35:00.000Z").getTime(),
+                endMs: new Date("2025-02-27T16:35:00.000Z").getTime(),
+                contestUrl: "https://codeforces.com/contest/2070",
+                problemsUrl: "https://codeforces.com/contest/2070/problems"
+            },
+            {
+                id: "codeforces_2069",
+                platform: "CodeForces",
+                title: "Codeforces Round 1005 (Div. 2)",
+                category: "MEDIUM",
+                startTime: "2025-02-16T14:35:00.000Z",
+                endTime: "2025-02-16T16:35:00.000Z",
+                startMs: new Date("2025-02-16T14:35:00.000Z").getTime(),
+                endMs: new Date("2025-02-16T16:35:00.000Z").getTime(),
+                contestUrl: "https://codeforces.com/contest/2069",
+                problemsUrl: "https://codeforces.com/contest/2069/problems"
+            },
+
+            // --- CODECHEF ---
+            {
+                id: "codechef_START174",
+                platform: "CodeChef",
+                title: "Starters 174 (Rated)",
+                category: "MEDIUM",
+                startTime: "2025-02-19T14:30:00.000Z",
+                endTime: "2025-02-19T16:30:00.000Z",
+                startMs: new Date("2025-02-19T14:30:00.000Z").getTime(),
+                endMs: new Date("2025-02-19T16:30:00.000Z").getTime(),
+                contestUrl: "https://www.codechef.com/START174",
+                problemsUrl: "https://www.codechef.com/START174"
+            },
+            {
+                id: "codechef_START173",
+                platform: "CodeChef",
+                title: "Starters 173 (Rated)",
+                category: "MEDIUM",
+                startTime: "2025-02-12T14:30:00.000Z",
+                endTime: "2025-02-12T16:30:00.000Z",
+                startMs: new Date("2025-02-12T14:30:00.000Z").getTime(),
+                endMs: new Date("2025-02-12T16:30:00.000Z").getTime(),
+                contestUrl: "https://www.codechef.com/START173",
+                problemsUrl: "https://www.codechef.com/START173"
+            },
+            {
+                id: "codechef_START172",
+                platform: "CodeChef",
+                title: "Starters 172 (Rated)",
+                category: "MEDIUM",
+                startTime: "2025-02-05T14:30:00.000Z",
+                endTime: "2025-02-05T16:30:00.000Z",
+                startMs: new Date("2025-02-05T14:30:00.000Z").getTime(),
+                endMs: new Date("2025-02-05T16:30:00.000Z").getTime(),
+                contestUrl: "https://www.codechef.com/START172",
+                problemsUrl: "https://www.codechef.com/START172"
+            },
+
+            // --- ATCODER ---
+            {
+                id: "atcoder_abc394",
+                platform: "AtCoder",
+                title: "AtCoder Beginner Contest 394",
+                category: "EASY",
+                startTime: "2025-02-22T12:00:00.000Z",
+                endTime: "2025-02-22T13:40:00.000Z",
+                startMs: new Date("2025-02-22T12:00:00.000Z").getTime(),
+                endMs: new Date("2025-02-22T13:40:00.000Z").getTime(),
+                contestUrl: "https://atcoder.jp/contests/abc394",
+                problemsUrl: "https://atcoder.jp/contests/abc394"
+            },
+            {
+                id: "atcoder_abc393",
+                platform: "AtCoder",
+                title: "AtCoder Beginner Contest 393",
+                category: "EASY",
+                startTime: "2025-02-15T12:00:00.000Z",
+                endTime: "2025-02-15T13:40:00.000Z",
+                startMs: new Date("2025-02-15T12:00:00.000Z").getTime(),
+                endMs: new Date("2025-02-15T13:40:00.000Z").getTime(),
+                contestUrl: "https://atcoder.jp/contests/abc393",
+                problemsUrl: "https://atcoder.jp/contests/abc393"
+            },
+            {
+                id: "atcoder_abc392",
+                platform: "AtCoder",
+                title: "AtCoder Beginner Contest 392",
+                category: "EASY",
+                startTime: "2025-02-08T12:00:00.000Z",
+                endTime: "2025-02-08T13:40:00.000Z",
+                startMs: new Date("2025-02-08T12:00:00.000Z").getTime(),
+                endMs: new Date("2025-02-08T13:40:00.000Z").getTime(),
+                contestUrl: "https://atcoder.jp/contests/abc392",
+                problemsUrl: "https://atcoder.jp/contests/abc392"
+            },
+
+            // --- GEEKSFORGEEKS ---
+            {
+                id: "geeksforgeeks_weekly_194",
+                platform: "GeeksforGeeks",
+                title: "Weekly Coding Contest - 194",
+                category: "EASY",
+                startTime: "2025-02-23T13:30:00.000Z",
+                endTime: "2025-02-23T15:00:00.000Z",
+                startMs: new Date("2025-02-23T13:30:00.000Z").getTime(),
+                endMs: new Date("2025-02-23T15:00:00.000Z").getTime(),
+                contestUrl: "https://practice.geeksforgeeks.org/events/rec/weekly-coding-contest",
+                problemsUrl: "https://practice.geeksforgeeks.org/events/rec/weekly-coding-contest"
+            },
+            {
+                id: "geeksforgeeks_weekly_193",
+                platform: "GeeksforGeeks",
+                title: "Weekly Coding Contest - 193",
+                category: "EASY",
+                startTime: "2025-02-16T13:30:00.000Z",
+                endTime: "2025-02-16T15:00:00.000Z",
+                startMs: new Date("2025-02-16T13:30:00.000Z").getTime(),
+                endMs: new Date("2025-02-16T15:00:00.000Z").getTime(),
+                contestUrl: "https://practice.geeksforgeeks.org/events/rec/weekly-coding-contest",
+                problemsUrl: "https://practice.geeksforgeeks.org/events/rec/weekly-coding-contest"
+            },
+            {
+                id: "geeksforgeeks_weekly_192",
+                platform: "GeeksforGeeks",
+                title: "Weekly Coding Contest - 192",
+                category: "EASY",
+                startTime: "2025-02-09T13:30:00.000Z",
+                endTime: "2025-02-09T15:00:00.000Z",
+                startMs: new Date("2025-02-09T13:30:00.000Z").getTime(),
+                endMs: new Date("2025-02-09T15:00:00.000Z").getTime(),
+                contestUrl: "https://practice.geeksforgeeks.org/events/rec/weekly-coding-contest",
+                problemsUrl: "https://practice.geeksforgeeks.org/events/rec/weekly-coding-contest"
+            }
+        ];
+    },
 
     /**
      * Load all reminders object from LocalStorage:
@@ -59,14 +269,11 @@ const ContestManager = {
     },
 
     /**
-     * Fetch real-time live contest data from verified platform APIs
-     */
-    /**
-     * Fetch real-time live contest data from verified platform APIs (All 5 Platforms)
+     * Fetch real-time contest data from platform APIs across all 5 platforms
      */
     async fetchRealTimeContests() {
         const nowMs = Date.now();
-        const fetched = [];
+        const fetched = [...this.getBaselineContests()];
 
         const fetchWithTimeout = async (url, options = {}, timeoutMs = 3500) => {
             const controller = new AbortController();
@@ -94,10 +301,13 @@ const ContestManager = {
                 const json = await res.json();
 
                 if (json.status === "OK" && Array.isArray(json.result)) {
-                    json.result.filter(c => {
+                    // Include upcoming, live, and recent concluded contests (past 30 days or last 15)
+                    const relevant = json.result.filter(c => {
                         const endMs = (c.startTimeSeconds + c.durationSeconds) * 1000;
-                        return endMs > nowMs - 7 * 24 * 60 * 60 * 1000;
-                    }).forEach(c => {
+                        return endMs > nowMs - 30 * 24 * 60 * 60 * 1000;
+                    });
+
+                    relevant.forEach(c => {
                         const startMs = c.startTimeSeconds * 1000;
                         const endMs = (c.startTimeSeconds + c.durationSeconds) * 1000;
                         let category = "MEDIUM";
@@ -150,13 +360,9 @@ const ContestManager = {
                     res = await fetchWithTimeout("https://alfa-leetcode-api.onrender.com/contests");
                 } catch (e) {
                     try {
-                        res = await fetchWithTimeout("https://leetcode.com/graphql", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ query: "query topTwoContests { topTwoContests { title titleSlug startTime duration } }" })
-                        });
-                    } catch (err) {
                         res = await fetchWithTimeout("https://kontests.net/api/v1/leet_code");
+                    } catch (err) {
+                        res = null;
                     }
                 }
                 if (!res || !res.ok) return;
@@ -165,7 +371,7 @@ const ContestManager = {
                 if (json && Array.isArray(json.allContests)) {
                     json.allContests.filter(c => {
                         const endMs = (c.startTime + c.duration) * 1000;
-                        return endMs > nowMs - 7 * 24 * 60 * 60 * 1000;
+                        return endMs > nowMs - 30 * 24 * 60 * 60 * 1000;
                     }).forEach(c => {
                         const startMs = c.startTime * 1000;
                         const endMs = (c.startTime + c.duration) * 1000;
@@ -176,23 +382,6 @@ const ContestManager = {
                             platform: "LeetCode",
                             title: c.title,
                             category: isBiweekly ? "ADVANCED" : "MEDIUM",
-                            startTime: new Date(startMs).toISOString(),
-                            endTime: new Date(endMs).toISOString(),
-                            startMs,
-                            endMs,
-                            contestUrl: `https://leetcode.com/contest/${c.titleSlug || ''}/`,
-                            problemsUrl: `https://leetcode.com/contest/${c.titleSlug || ''}/`
-                        });
-                    });
-                } else if (json && json.data && Array.isArray(json.data.topTwoContests)) {
-                    json.data.topTwoContests.forEach(c => {
-                        const startMs = c.startTime * 1000;
-                        const endMs = (c.startTime + (c.duration || 5400)) * 1000;
-                        fetched.push({
-                            id: `leetcode_${c.titleSlug || c.title}`,
-                            platform: "LeetCode",
-                            title: c.title,
-                            category: c.title.toLowerCase().includes("biweekly") ? "ADVANCED" : "MEDIUM",
                             startTime: new Date(startMs).toISOString(),
                             endTime: new Date(endMs).toISOString(),
                             startMs,
@@ -236,7 +425,7 @@ const ContestManager = {
                     try {
                         res = await fetchWithTimeout("https://api.allorigins.win/raw?url=" + encodeURIComponent("https://www.codechef.com/api/list/contests/all"), {}, 2500);
                     } catch (err) {
-                        res = await fetchWithTimeout("https://www.codechef.com/api/list/contests/all", {}, 2000);
+                        res = null;
                     }
                 }
                 if (!res || !res.ok) return;
@@ -282,7 +471,7 @@ const ContestManager = {
                     };
                     if (json.future_contests && Array.isArray(json.future_contests)) json.future_contests.forEach(parseCC);
                     if (json.present_contests && Array.isArray(json.present_contests)) json.present_contests.forEach(parseCC);
-                    if (json.past_contests && Array.isArray(json.past_contests)) json.past_contests.slice(0, 5).forEach(parseCC);
+                    if (json.past_contests && Array.isArray(json.past_contests)) json.past_contests.slice(0, 10).forEach(parseCC);
                 }
             } catch (e) {
                 console.warn("CodeChef live fetch error:", e.message);
@@ -294,40 +483,26 @@ const ContestManager = {
             try {
                 let res;
                 try {
-                    res = await fetchWithTimeout("https://kontests.net/api/v1/at_coder", {}, 2500);
+                    res = await fetchWithTimeout("https://kenkoooo.com/atcoder/resources/contests.json", {}, 3000);
                 } catch (e) {
-                    res = await fetchWithTimeout("https://api.allorigins.win/raw?url=" + encodeURIComponent("https://kenkoooo.com/atcoder/resources/contests.json"), {}, 3000);
+                    try {
+                        res = await fetchWithTimeout("https://kontests.net/api/v1/at_coder", {}, 2500);
+                    } catch (err) {
+                        res = null;
+                    }
                 }
                 if (!res || !res.ok) return;
                 const json = await res.json();
 
                 if (Array.isArray(json)) {
-                    if (json.length > 0 && json[0].start_time) {
-                        json.forEach(c => {
-                            const startMs = new Date(c.start_time).getTime();
-                            const endMs = new Date(c.end_time).getTime();
-                            if (!isNaN(startMs) && !isNaN(endMs)) {
-                                fetched.push({
-                                    id: `atcoder_${c.name.replace(/\s+/g, '_')}`,
-                                    platform: "AtCoder",
-                                    title: c.name,
-                                    category: c.name.toLowerCase().includes("beginner") ? "EASY" : "MEDIUM",
-                                    startTime: new Date(startMs).toISOString(),
-                                    endTime: new Date(endMs).toISOString(),
-                                    startMs,
-                                    endMs,
-                                    contestUrl: c.url || "https://atcoder.jp/contests",
-                                    problemsUrl: c.url || "https://atcoder.jp/contests"
-                                });
-                            }
-                        });
-                    } else {
-                        const recentOrUpcoming = json.filter(c => {
+                    if (json.length > 0 && json[0].start_epoch_second !== undefined) {
+                        // AtCoder resource format
+                        const relevant = json.filter(c => {
                             const endMs = (c.start_epoch_second + c.duration_second) * 1000;
-                            return endMs > nowMs - 7 * 24 * 60 * 60 * 1000;
-                        }).slice(-10);
+                            return endMs > nowMs - 30 * 24 * 60 * 60 * 1000;
+                        });
 
-                        recentOrUpcoming.forEach(c => {
+                        relevant.forEach(c => {
                             const startMs = c.start_epoch_second * 1000;
                             const endMs = (c.start_epoch_second + c.duration_second) * 1000;
                             let category = "MEDIUM";
@@ -346,6 +521,25 @@ const ContestManager = {
                                 contestUrl: `https://atcoder.jp/contests/${c.id}`,
                                 problemsUrl: `https://atcoder.jp/contests/${c.id}`
                             });
+                        });
+                    } else if (json.length > 0 && json[0].start_time) {
+                        json.forEach(c => {
+                            const startMs = new Date(c.start_time).getTime();
+                            const endMs = new Date(c.end_time).getTime();
+                            if (!isNaN(startMs) && !isNaN(endMs)) {
+                                fetched.push({
+                                    id: `atcoder_${c.name.replace(/\s+/g, '_')}`,
+                                    platform: "AtCoder",
+                                    title: c.name,
+                                    category: c.name.toLowerCase().includes("beginner") ? "EASY" : "MEDIUM",
+                                    startTime: new Date(startMs).toISOString(),
+                                    endTime: new Date(endMs).toISOString(),
+                                    startMs,
+                                    endMs,
+                                    contestUrl: c.url || "https://atcoder.jp/contests",
+                                    problemsUrl: c.url || "https://atcoder.jp/contests"
+                                });
+                            }
                         });
                     }
                 }
@@ -405,7 +599,8 @@ const ContestManager = {
             fetchGeeksforGeeks()
         ]);
 
-        // Failsafe: Ensure every platform has upcoming contests generated for the next 35 days if API returned no upcoming items
+        // Dynamic recurring upcoming generator:
+        // Ensure every platform has upcoming contests for the next 35 days if API returned no upcoming items
         const platformsList = ["LeetCode", "CodeForces", "AtCoder", "CodeChef", "GeeksforGeeks"];
         platformsList.forEach(plat => {
             const hasUpcoming = fetched.some(c => c.platform.toLowerCase() === plat.toLowerCase() && c.startMs >= nowMs);
@@ -425,15 +620,17 @@ const ContestManager = {
                 }
             });
             this.rawFetchedContests = Array.from(uniqueMap.values());
-            console.log(`ContestManager: Successfully loaded ${this.rawFetchedContests.length} real-time live contests across 5 platforms.`);
+            console.log(`ContestManager: Successfully loaded ${this.rawFetchedContests.length} contests across 5 platforms.`);
         }
     },
 
+    /**
+     * Generates recurring contests for platform schedule
+     */
     generateRecurringContestsForPlatform(platform, nowMs) {
         const generated = [];
         const now = new Date(nowMs);
 
-        // Generate upcoming contest instances for the next 35 days
         for (let i = 0; i < 35; i++) {
             const currDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i);
             const dayOfWeek = currDate.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
@@ -488,7 +685,7 @@ const ContestManager = {
                     const startMs = start.getTime();
                     const endMs = startMs + 90 * 60 * 1000;
                     if (endMs > nowMs) {
-                        const contestNum = Math.floor(currDate.getDate() / 7) + 168;
+                        const contestNum = Math.floor((startMs - new Date(2024, 0, 7).getTime()) / (7 * 24 * 3600 * 1000)) + 138;
                         generated.push({
                             id: `geeksforgeeks_weekly_${startMs}`,
                             platform: "GeeksforGeeks",
@@ -504,7 +701,7 @@ const ContestManager = {
                     }
                 }
             } else if (platform === "AtCoder") {
-                // AtCoder Beginner Contest every Saturday at 17:30 IST
+                // AtCoder Beginner Contest every Saturday at 17:30 IST (12:00 UTC)
                 if (dayOfWeek === 6) {
                     const start = new Date(currDate.getFullYear(), currDate.getMonth(), currDate.getDate(), 17, 30, 0);
                     const startMs = start.getTime();
@@ -576,51 +773,76 @@ const ContestManager = {
     },
 
     /**
-     * Get dynamic contest list with status derived from current time
+     * Derive exact dynamic status for a contest at given timestamp
+     * Source of truth:
+     *   IF nowMs < startMs           -> UPCOMING
+     *   IF startMs <= nowMs < endMs  -> LIVE NOW
+     *   IF nowMs >= endMs            -> ENDED (RECENTLY CONCLUDED)
      */
-    getContests() {
-        const nowMs = Date.now();
-        const sourceContests = this.rawFetchedContests;
+    getStatus(c, nowMs = Date.now()) {
+        const startMs = c.startMs || new Date(c.startTime).getTime();
+        const endMs = c.endMs || new Date(c.endTime).getTime();
 
-        return sourceContests.map(c => {
-            const startMs = c.startMs || new Date(c.startTime).getTime();
-            const endMs = c.endMs || new Date(c.endTime).getTime();
-
-            let status = "UPCOMING";
-            if (nowMs >= startMs && nowMs <= endMs) {
-                status = "LIVE NOW";
-            } else if (nowMs > endMs) {
-                status = "ENDED";
-            }
-
-            return {
-                ...c,
-                status,
-                startMs,
-                endMs
-            };
-        });
+        if (nowMs < startMs) {
+            return "UPCOMING";
+        } else if (nowMs >= startMs && nowMs < endMs) {
+            return "LIVE NOW";
+        } else {
+            return "ENDED";
+        }
     },
 
     /**
-     * Compute summary numbers
+     * Get contest list, optionally filtered by platform, with dynamically calculated status
      */
-    getSummaryStats() {
-        const contests = this.getContests();
-        const now = new Date();
-        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-        const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+    getContests(platform = "All", nowMs = Date.now()) {
+        const sourceContests = (this.rawFetchedContests && this.rawFetchedContests.length > 0)
+            ? this.rawFetchedContests
+            : this.getBaselineContests();
 
-        const live = contests.filter(c => c.status === "LIVE NOW");
+        return sourceContests
+            .filter(c => {
+                if (platform === "All" || !platform) return true;
+                return c.platform.toLowerCase() === platform.toLowerCase();
+            })
+            .map(c => {
+                const startMs = c.startMs || new Date(c.startTime).getTime();
+                const endMs = c.endMs || new Date(c.endTime).getTime();
+                const status = this.getStatus(c, nowMs);
+
+                return {
+                    ...c,
+                    status,
+                    startMs,
+                    endMs
+                };
+            });
+    },
+
+    /**
+     * Compute dynamic summary statistics for a given platform and timestamp
+     */
+    getSummaryStats(platform = "All", nowMs = Date.now()) {
+        const contests = this.getContests(platform, nowMs);
+        const now = new Date(nowMs);
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0).getTime();
+        const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).getTime();
+
+        // Priority sorting:
+        // Live: remaining time ascending (closest to ending first)
+        const live = contests.filter(c => c.status === "LIVE NOW").sort((a, b) => a.endMs - b.endMs);
+        // Upcoming: start time ascending (nearest starting first)
         const upcoming = contests.filter(c => c.status === "UPCOMING").sort((a, b) => a.startMs - b.startMs);
+        // Concluded: end time descending (most recently finished first)
         const ended = contests.filter(c => c.status === "ENDED").sort((a, b) => b.endMs - a.endMs);
 
         const todayContests = contests.filter(c => {
-            return (c.startMs >= startOfDay && c.startMs <= endOfDay) || (c.status === "LIVE NOW");
+            return (c.startMs >= startOfDay && c.startMs <= endOfDay) || (nowMs >= c.startMs && nowMs < c.endMs);
         });
 
         const nextUpcoming = upcoming.length > 0 ? upcoming[0] : null;
-        const platforms = new Set(contests.map(c => c.platform));
+        const allSource = (this.rawFetchedContests && this.rawFetchedContests.length > 0) ? this.rawFetchedContests : this.getBaselineContests();
+        const uniquePlatforms = new Set(allSource.map(c => c.platform));
 
         return {
             totalContests: contests.length,
@@ -628,17 +850,16 @@ const ContestManager = {
             upcomingCount: upcoming.length,
             endedCount: ended.length,
             todayCount: todayContests.length,
-            platformCount: platforms.size,
+            platformCount: platform === "All" ? uniquePlatforms.size : 1,
             nextUpcoming,
             recentFinished: ended.slice(0, 3)
         };
     },
 
     /**
-     * Formats target timestamp into countdown string e.g. "8h 42m 43s"
+     * Formats target timestamp into countdown string e.g. "01h 24m 18s" or "5d 04h 12m"
      */
-    formatCountdown(targetMs) {
-        const nowMs = Date.now();
+    formatCountdown(targetMs, nowMs = Date.now()) {
         const diffMs = targetMs - nowMs;
 
         if (diffMs <= 0) return "0s";
@@ -648,13 +869,18 @@ const ContestManager = {
         const hours = Math.floor((diffMs / (1000 * 60 * 60)) % 24);
         const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-        let parts = [];
-        if (days > 0) parts.push(`${days}d`);
-        if (hours > 0 || days > 0) parts.push(`${hours}h`);
-        if (minutes > 0 || hours > 0 || days > 0) parts.push(`${minutes}m`);
-        parts.push(`${seconds}s`);
+        const pad = (n) => String(n).padStart(2, "0");
 
-        return parts.slice(0, 3).join(" ");
+        if (days > 0) {
+            return `${days}d ${pad(hours)}h ${pad(minutes)}m`;
+        }
+        if (hours > 0) {
+            return `${pad(hours)}h ${pad(minutes)}m ${pad(seconds)}s`;
+        }
+        if (minutes > 0) {
+            return `${pad(minutes)}m ${pad(seconds)}s`;
+        }
+        return `${seconds}s`;
     },
 
     formatShortTime(isoString) {

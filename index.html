@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ctrl+Alt+Career — Competitive Coding Contests & DSA Sheet Tracker</title>
+    <title>CodeOrbit — Competitive Coding Contests & DSA Sheet Tracker</title>
     <meta name="description" content="Ctrl your skills. Alt your excuses. Enter your career. The ultimate dashboard for tracking competitive coding contests and mastering DSA sheets.">
     
     <!-- Google Fonts -->
@@ -13,17 +13,25 @@
     
     <!-- Custom CSS Design System -->
     <link rel="stylesheet" href="css/style.css">
-<meta name="google-site-verification"
+<meta name="google-site-verification"c
       content="google2d3842b7036d1e7d.html"/>
 
 </head>
 <body>
 
+    <!-- ============================================================
+         DARK THEME COSMIC BACKGROUND LAYERS (pointer-events: none)
+         These are fixed, behind all UI content, dark theme only.
+         DO NOT REMOVE. DO NOT MODIFY LIGHT THEME.
+         ============================================================ -->
+    <div id="cosmic-bg" aria-hidden="true"></div>
+
+
     <div class="app-container">
         <!-- Floating Navbar -->
         <header class="navbar">
             <a href="#" class="brand-logo" onclick="UIManager.switchTab('challenges'); return false;">
-                <span class="logo-icon">&lt;/&gt;</span> Ctrl+Alt+Career
+                <span class="logo-icon">&lt;/&gt;</span> CodeOrbit
             </a>
 
             <nav class="nav-tabs">
@@ -42,70 +50,53 @@
                 <button class="user-profile-btn" id="nav-profile-btn" style="display: none;">
                     <div class="user-avatar-circle" id="nav-user-avatar">U</div>
                     <span id="nav-username-display">User</span>
+                    <span class="user-nav-stars" id="nav-stars-display" title="Daily DSA Mission Stars">⭐ <span id="nav-stars-count">0</span></span>
                 </button>
             </div>
+
+            <!-- Mobile: hamburger button (hidden on desktop via CSS) -->
+            <button class="mobile-menu-btn" id="mobile-menu-btn"
+                    aria-label="Open navigation menu"
+                    aria-expanded="false"
+                    aria-controls="mobile-nav-drawer">
+                <span class="hamburger-bar"></span>
+                <span class="hamburger-bar"></span>
+                <span class="hamburger-bar"></span>
+            </button>
         </header>
 
-        <!-- View Section 1: Challenges / Ctrl+Alt+Career Home Page (ACTIVE BY DEFAULT) -->
-        <main id="view-challenges" class="view-section active">
-            <!-- Running DSA Ambient Background Animation -->
-            <div class="dsa-running-bg" aria-hidden="true">
-                <div class="dsa-bg-glow dsa-bg-glow-1"></div>
-                <div class="dsa-bg-glow dsa-bg-glow-2"></div>
-                <div class="dsa-bg-dots"></div>
-
-                <!-- Futuristic Ambient Rocket Layer (First Viewport 100vh) -->
-                <div class="ambient-rocket-layer"><canvas id="rocket-canvas"></canvas></div>
-
-                <!-- Running Streams Layer -->
-                <div class="dsa-streams-wrapper">
-                    <div class="dsa-stream-row dsa-row-1">
-                        <div class="dsa-stream-track track-right">
-                            <span>DSA</span><span class="dot">•</span><span>ARRAYS</span><span class="dot">•</span><span>STRINGS</span><span class="dot">•</span><span>LINKED LIST</span><span class="dot">•</span><span>STACK</span><span class="dot">•</span><span>QUEUE</span><span class="dot">•</span><span>TREES</span><span class="dot">•</span><span>GRAPHS</span><span class="dot">•</span><span>DP</span><span class="dot">•</span><span>GREEDY</span><span class="dot">•</span><span>HEAPS</span><span class="dot">•</span><span>TRIES</span><span class="dot">•</span>
-                            <span>DSA</span><span class="dot">•</span><span>ARRAYS</span><span class="dot">•</span><span>STRINGS</span><span class="dot">•</span><span>LINKED LIST</span><span class="dot">•</span><span>STACK</span><span class="dot">•</span><span>QUEUE</span><span class="dot">•</span><span>TREES</span><span class="dot">•</span><span>GRAPHS</span><span class="dot">•</span><span>DP</span><span class="dot">•</span><span>GREEDY</span><span class="dot">•</span><span>HEAPS</span><span class="dot">•</span><span>TRIES</span><span class="dot">•</span>
-                        </div>
-                    </div>
-                    <div class="dsa-stream-row dsa-row-1b">
-                        <div class="dsa-stream-track track-right">
-                            <span>TWO POINTER</span><span class="dot">•</span><span>SLIDING WINDOW</span><span class="dot">•</span><span>BINARY SEARCH</span><span class="dot">•</span><span>BIT MANIPULATION</span><span class="dot">•</span><span>BACKTRACKING</span><span class="dot">•</span><span>RECURSION</span><span class="dot">•</span><span>SEGMENT TREE</span><span class="dot">•</span><span>DISJOINT SET</span><span class="dot">•</span>
-                            <span>TWO POINTER</span><span class="dot">•</span><span>SLIDING WINDOW</span><span class="dot">•</span><span>BINARY SEARCH</span><span class="dot">•</span><span>BIT MANIPULATION</span><span class="dot">•</span><span>BACKTRACKING</span><span class="dot">•</span><span>RECURSION</span><span class="dot">•</span><span>SEGMENT TREE</span><span class="dot">•</span><span>DISJOINT SET</span><span class="dot">•</span>
-                        </div>
-                    </div>
-                    <div class="dsa-stream-row dsa-row-1c">
-                        <div class="dsa-stream-track track-left">
-                            <span>O(1)</span><span class="dot">•</span><span>O(LOG N)</span><span class="dot">•</span><span>DYNAMIC PROGRAMMING</span><span class="dot">•</span><span>BFS &amp; DFS</span><span class="dot">•</span><span>SORTING</span><span class="dot">•</span><span>HASHING</span><span class="dot">•</span><span>KADANE</span><span class="dot">•</span><span>DIJKSTRA</span><span class="dot">•</span>
-                            <span>O(1)</span><span class="dot">•</span><span>O(LOG N)</span><span class="dot">•</span><span>DYNAMIC PROGRAMMING</span><span class="dot">•</span><span>BFS &amp; DFS</span><span class="dot">•</span><span>SORTING</span><span class="dot">•</span><span>HASHING</span><span class="dot">•</span><span>KADANE</span><span class="dot">•</span><span>DIJKSTRA</span><span class="dot">•</span>
-                        </div>
-                    </div>
-                    <div class="dsa-stream-row dsa-row-2">
-                        <div class="dsa-stream-track track-right">
-                            <span>TWO POINTER</span><span class="dot">•</span><span>SLIDING WINDOW</span><span class="dot">•</span><span>BINARY SEARCH</span><span class="dot">•</span><span>BIT MANIPULATION</span><span class="dot">•</span><span>BACKTRACKING</span><span class="dot">•</span><span>RECURSION</span><span class="dot">•</span><span>SEGMENT TREE</span><span class="dot">•</span><span>DISJOINT SET</span><span class="dot">•</span>
-                            <span>TWO POINTER</span><span class="dot">•</span><span>SLIDING WINDOW</span><span class="dot">•</span><span>BINARY SEARCH</span><span class="dot">•</span><span>BIT MANIPULATION</span><span class="dot">•</span><span>BACKTRACKING</span><span class="dot">•</span><span>RECURSION</span><span class="dot">•</span><span>SEGMENT TREE</span><span class="dot">•</span><span>DISJOINT SET</span><span class="dot">•</span>
-                        </div>
-                    </div>
-                    <div class="dsa-stream-row dsa-row-3">
-                        <div class="dsa-stream-track track-left">
-                            <span>O(1)</span><span class="dot">•</span><span>O(LOG N)</span><span class="dot">•</span><span>O(N)</span><span class="dot">•</span><span>O(N LOG N)</span><span class="dot">•</span><span>O(N²)</span><span class="dot">•</span><span>DYNAMIC PROGRAMMING</span><span class="dot">•</span><span>BFS &amp; DFS</span><span class="dot">•</span><span>DIJKSTRA</span><span class="dot">•</span><span>KADANE</span><span class="dot">•</span>
-                            <span>O(1)</span><span class="dot">•</span><span>O(LOG N)</span><span class="dot">•</span><span>O(N)</span><span class="dot">•</span><span>O(N LOG N)</span><span class="dot">•</span><span>O(N²)</span><span class="dot">•</span><span>DYNAMIC PROGRAMMING</span><span class="dot">•</span><span>BFS &amp; DFS</span><span class="dot">•</span><span>DIJKSTRA</span><span class="dot">•</span><span>KADANE</span><span class="dot">•</span>
-                        </div>
-                    </div>
-                    <div class="dsa-stream-row dsa-row-4">
-                        <div class="dsa-stream-track track-right">
-                            <span>DSA</span><span class="dot">•</span><span>ARRAYS</span><span class="dot">•</span><span>STRINGS</span><span class="dot">•</span><span>TREES</span><span class="dot">•</span><span>GRAPHS</span><span class="dot">•</span><span>DP</span><span class="dot">•</span><span>GREEDY</span><span class="dot">•</span><span>STACK</span><span class="dot">•</span><span>QUEUE</span><span class="dot">•</span><span>LINKED LIST</span><span class="dot">•</span>
-                            <span>DSA</span><span class="dot">•</span><span>ARRAYS</span><span class="dot">•</span><span>STRINGS</span><span class="dot">•</span><span>TREES</span><span class="dot">•</span><span>GRAPHS</span><span class="dot">•</span><span>DP</span><span class="dot">•</span><span>GREEDY</span><span class="dot">•</span><span>STACK</span><span class="dot">•</span><span>QUEUE</span><span class="dot">•</span><span>LINKED LIST</span><span class="dot">•</span>
-                        </div>
-                    </div>
-                    <div class="dsa-stream-row dsa-row-5">
-                        <div class="dsa-stream-track track-left">
-                            <span>LEETCODE</span><span class="dot">•</span><span>GEEKSFORGEEKS</span><span class="dot">•</span><span>CODECHEF</span><span class="dot">•</span><span>CODEFORCES</span><span class="dot">•</span><span>STRIVER A2Z</span><span class="dot">•</span><span>PATTERNS</span><span class="dot">•</span>
-                            <span>LEETCODE</span><span class="dot">•</span><span>GEEKSFORGEEKS</span><span class="dot">•</span><span>CODECHEF</span><span class="dot">•</span><span>CODEFORCES</span><span class="dot">•</span><span>STRIVER A2Z</span><span class="dot">•</span><span>PATTERNS</span><span class="dot">•</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Dark Glass Vignette Overlay -->
-                <div class="dsa-glass-overlay"></div>
+        <!-- Mobile navigation drawer (hidden on desktop via CSS) -->
+        <nav class="mobile-nav-drawer" id="mobile-nav-drawer" aria-hidden="true">
+            <button class="mobile-nav-item" data-tab="challenges"
+                    onclick="MobileNav.closeAndSwitch('challenges')">
+                🏆 Challenges
+            </button>
+            <button class="mobile-nav-item" data-tab="mastery"
+                    onclick="MobileNav.closeAndSwitch('mastery')">
+                📚 DSA Mastery
+            </button>
+            <button class="mobile-nav-item" data-tab="roadmap"
+                    onclick="MobileNav.closeAndSwitch('roadmap')">
+                🗺️ Roadmap
+            </button>
+            <div class="mobile-nav-divider"></div>
+            <div class="mobile-nav-actions">
+                <button class="icon-btn" id="mobile-theme-toggle-btn" title="Toggle Theme">☀️</button>
+                <button class="user-profile-btn" id="mobile-nav-login-btn">
+                    <span>Log In</span>
+                </button>
+                <button class="user-profile-btn" id="mobile-nav-profile-btn" style="display: none;">
+                    <div class="user-avatar-circle" id="mobile-nav-user-avatar">U</div>
+                    <span id="mobile-nav-username-display">User</span>
+                    <span class="user-nav-stars" id="mobile-nav-stars-display" title="Daily DSA Mission Stars">⭐ <span id="mobile-nav-stars-count">0</span></span>
+                </button>
             </div>
+        </nav>
+
+        <!-- View Section 1: Challenges / CodeOrbit Home Page (ACTIVE BY DEFAULT) -->
+        <main id="view-challenges" class="view-section active">
+
+
 
             <!-- Starting Page Top Action Area -->
             <section class="codecal-hero">
@@ -182,15 +173,15 @@
             <!-- Dynamic Statistics Bar -->
             <section class="codecal-stats">
                 <div class="stat-pill-card">
-                    <div class="stat-pill-number" id="hero-stat-problems">600+</div>
+                    <div class="stat-pill-number" id="hero-stat-problems">0</div>
                     <div class="stat-pill-label">DSA PROBLEMS</div>
                 </div>
                 <div class="stat-pill-card">
-                    <div class="stat-pill-number" id="hero-stat-contests">50+</div>
+                    <div class="stat-pill-number" id="hero-stat-contests">0</div>
                     <div class="stat-pill-label">CONTESTS TRACKED</div>
                 </div>
                 <div class="stat-pill-card">
-                    <div class="stat-pill-number" id="hero-stat-platforms">4</div>
+                    <div class="stat-pill-number" id="hero-stat-platforms">0</div>
                     <div class="stat-pill-label">PLATFORMS</div>
                 </div>
             </section>
@@ -338,6 +329,32 @@
                         </div>
                     </div>
                 </section>
+
+                <!-- Ram's DSA Sheet Promo Banner Section -->
+                <section class="dsa-sheet-promo-section">
+                    <div class="glass-card dsa-sheet-promo-card">
+                        <div class="dsa-promo-left">
+                            <span class="dsa-promo-tag">DSA TRACK</span>
+                            <h2 class="dsa-promo-title">CodeOrbit's DSA Sheet</h2>
+                            <p class="dsa-promo-subtitle">From practice to placement: The ultimate DSA playbook for global roles</p>
+                        </div>
+                        <div class="dsa-promo-center">
+                            <blockquote class="dsa-promo-quote">
+                                "Logic isn't inherited, and bugs aren't permanent: it is the continuous loop of trying, failing, and learning that rewires your brain."
+                            </blockquote>
+                        </div>
+                        <div class="dsa-promo-right">
+                            <div class="dsa-promo-stat">
+                                <div class="dsa-promo-number">375+</div>
+                                <div class="dsa-promo-label">PROBLEMS</div>
+                                <div class="dsa-promo-sublabel">CURATED FOR YOU</div>
+                            </div>
+                            <button class="btn-start-journey" onclick="UIManager.switchTab('mastery')">
+                                Start Journey 🚀
+                            </button>
+                        </div>
+                    </div>
+                </section>
             </div>
 
             <!-- Calendar View Container (Hidden by default) -->
@@ -345,17 +362,17 @@
                 <!-- Dynamically filled by contest-ui.js -->
             </div>
 
-            <!-- Ctrl+Alt+Career Structured Footer -->
+            <!-- CodeOrbit Structured Footer -->
             <footer class="codecal-footer">
                 <div class="footer-badges-row">
-                    <div class="footer-badge-item"><span>✨</span> <span id="footer-problems-count">633+</span> Curated DSA Problems</div>
+                    <div class="footer-badge-item"><span>✨</span> <span id="footer-problems-count">521+</span> Curated DSA Problems</div>
                     <div class="footer-badge-item"><span>🌐</span> Live Global Contest Tracking</div>
                     <div class="footer-badge-item"><span>🔄</span> Automated Real-Time Sync</div>
                 </div>
 
                 <div class="footer-main-grid">
                     <div class="footer-brand-col">
-                        <div class="footer-brand"><span class="logo-icon">&lt;/&gt;</span> Ctrl+Alt+Career</div>
+                        <div class="footer-brand"><span class="logo-icon">&lt;/&gt;</span> CodeOrbit</div>
                         <p class="footer-desc">The definitive platform for competitive programmers and software engineers — real-time contest telemetry, live countdowns, and structured DSA mastery.</p>
                         <div class="footer-crafted">Crafted with passion by <strong>Sudheer_kalahasthi</strong></div>
                         <div class="footer-social-links">
@@ -373,8 +390,8 @@
                         <h4>PLATFORM</h4>
                         <ul>
                             <li><a href="#" onclick="UIManager.switchTab('challenges'); return false;">Challenges</a></li>
-                            <li><a href="#" onclick="UIManager.switchTab('mastery'); return false;">DSA Mastery <span class="badge-mini" id="footer-mastery-badge">633</span></a></li>
-                            <li><a href="https://whimsical.com/dsa-roadmap-JegsSL6nFr1b3V25bRzpYA" target="_blank">Visual Roadmap</a></li>
+                            <li><a href="#" onclick="UIManager.switchTab('mastery'); return false;">DSA Mastery <span class="badge-mini" id="footer-mastery-badge">150</span></a></li>
+                            <li><a href="#" onclick="UIManager.switchTab('roadmap'); return false;">Visual Roadmap</a></li>
                         </ul>
                     </div>
 
@@ -401,7 +418,7 @@
                 </div>
 
                 <div class="footer-bottom-row">
-                    <div class="footer-copyright">© 2026 Ctrl+Alt+Career by Sudheer Kalahasthi. All rights reserved.</div>
+                    <div class="footer-copyright">© 2026 CodeOrbit by Sudheer Kalahasthi. All rights reserved.</div>
                     <div class="footer-status-group">
                         <span id="footer-live-clock" class="footer-clock"></span>
                         <span class="system-status-pill">🟢 ALL SYSTEMS OPERATIONAL</span>
@@ -430,12 +447,73 @@
                 </div>
             </section>
 
+            <!-- ════════════════════════════════════════════════════
+                 DSA Learning Mode Selector
+                 ════════════════════════════════════════════════════ -->
+            <section class="dsa-mode-selector-section" id="dsa-mode-selector-section" aria-label="DSA Learning Mode">
+                <div class="dsa-mode-selector-header">
+                    <span class="dsa-mode-selector-label">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                            <path d="M2 17l10 5 10-5"/>
+                            <path d="M2 12l10 5 10-5"/>
+                        </svg>
+                        DSA LEARNING MODE
+                    </span>
+                    <span class="dsa-mode-selector-hint">Choose your progression path</span>
+                </div>
+
+                <div class="dsa-mode-cards" role="group" aria-label="Select learning mode">
+                    <!-- Mode: Basic → Medium -->
+                    <button
+                        class="dsa-mode-card"
+                        id="dsa-mode-card-basic-medium"
+                        data-mode="basic-medium"
+                        aria-pressed="false"
+                        onclick="DSAModeSelector.select('basic-medium')"
+                        title="Basic → Medium: Build your DSA fundamentals from Easy to Medium"
+                    >
+                        <div class="dsa-mode-card-inner">
+                            <div class="dsa-mode-badges">
+                                <span class="dsa-mode-badge dsa-mode-badge--easy">Easy</span>
+                                <span class="dsa-mode-arrow" aria-hidden="true">→</span>
+                                <span class="dsa-mode-badge dsa-mode-badge--medium">Medium</span>
+                            </div>
+                            <div class="dsa-mode-card-title">BASIC → MEDIUM</div>
+                            <div class="dsa-mode-card-desc">Build your DSA fundamentals from Easy to Medium</div>
+                        </div>
+                        <div class="dsa-mode-card-check" aria-hidden="true">✓</div>
+                    </button>
+
+                    <!-- Mode: Medium → Advanced -->
+                    <button
+                        class="dsa-mode-card"
+                        id="dsa-mode-card-medium-advanced"
+                        data-mode="medium-advanced"
+                        aria-pressed="false"
+                        onclick="DSAModeSelector.select('medium-advanced')"
+                        title="Medium → Advanced: Strengthen your DSA skills from Medium to Hard"
+                    >
+                        <div class="dsa-mode-card-inner">
+                            <div class="dsa-mode-badges">
+                                <span class="dsa-mode-badge dsa-mode-badge--medium">Medium</span>
+                                <span class="dsa-mode-arrow" aria-hidden="true">→</span>
+                                <span class="dsa-mode-badge dsa-mode-badge--hard">Hard</span>
+                            </div>
+                            <div class="dsa-mode-card-title">MEDIUM → ADVANCED</div>
+                            <div class="dsa-mode-card-desc">Strengthen your DSA skills from Medium to Hard</div>
+                        </div>
+                        <div class="dsa-mode-card-check" aria-hidden="true">✓</div>
+                    </button>
+                </div>
+            </section>
+
             <!-- Stats Row -->
             <section class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-card-label">TOTAL PROBLEMS</div>
-                    <div class="stat-card-value" id="stat-total">633</div>
-                    <div class="stat-card-sub">Striver A2Z + Extended</div>
+                    <div class="stat-card-value" id="stat-total">150</div>
+                    <div class="stat-card-sub">Sudheer's sheet</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-card-label">COMPLETED</div>
@@ -444,7 +522,7 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-card-label">REMAINING</div>
-                    <div class="stat-card-value" id="stat-remaining">633</div>
+                    <div class="stat-card-value" id="stat-remaining">150</div>
                     <div class="stat-card-sub">Left to solve</div>
                 </div>
                 <div class="stat-card">
@@ -506,9 +584,170 @@
                 </div>
             </section>
 
+            <!-- 3D DSA Keyboard (dark theme only) — ABOVE the accordion -->
+            <section id="keyboard-3d-wrapper" class="keyboard-3d-wrapper" aria-label="3D DSA Topic Keyboard">
+                <!-- Three.js canvas injected here by keyboard-3d.js -->
+                <div id="keyboard-3d-info" class="keyboard-3d-info" aria-live="polite" aria-atomic="true"></div>
+            </section>
+
+            <!-- 🔥 Today's Daily DSA Mission -->
+            <section id="daily-mission-section" class="daily-mission-section" aria-label="Today's Daily DSA Mission">
+                <!-- Dynamically populated by daily-mission.js -->
+            </section>
+
             <!-- Topics Accordion Container -->
             <section id="topics-accordion-container" class="topics-accordion-list">
                 <!-- Dynamically populated by ui.js -->
+            </section>
+        </main>
+
+        <!-- View Section 3: DSA Concept Learning Roadmap -->
+        <main id="view-roadmap" class="view-section">
+            <!-- Roadmap Hero Header & Controls -->
+            <section class="roadmap-hero-panel">
+                <div class="roadmap-header-row">
+                    <div class="roadmap-title-group">
+                        <div class="roadmap-badge-tag">
+                            <span class="roadmap-badge-icon">🗺️</span>
+                            <span class="roadmap-badge-text">CONCEPT-BASED CURRICULUM</span>
+                        </div>
+                        <h1 class="roadmap-page-title">DSA Concept Roadmap</h1>
+                        <p class="roadmap-page-subtitle">Interactive mind-map tree navigating 18 progressive DSA phases — from fundamentals to advanced algorithmic mastery.</p>
+                    </div>
+
+                    <div class="roadmap-hero-stats">
+                        <div class="roadmap-stat-pill" id="roadmap-stat-total-pill">18 Phases · 95 Concepts</div>
+                        <button class="roadmap-action-btn" id="roadmap-expand-all-btn">
+                            <span>⊞ Expand All</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Search & Stage Filters Toolbar -->
+                <div class="roadmap-controls-bar">
+                    <div class="roadmap-search-wrap">
+                        <span class="roadmap-search-icon">🔍</span>
+                        <input type="text" id="roadmap-search-input" class="roadmap-search-input" placeholder="Search concepts, algorithms, subtopics (e.g., Kadane, Dijkstra, Knapsack)...">
+                    </div>
+
+                    <div class="roadmap-filters-wrap">
+                        <div class="roadmap-filter-pills" id="roadmap-diff-filter">
+                            <button class="roadmap-filter-pill active" data-tier="All">All Stages</button>
+                            <button class="roadmap-filter-pill" data-tier="Foundation">Foundation</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Topic Explorer Circular Floating Trigger & Dropdown Menu -->
+            <div class="roadmap-explorer-bar" id="roadmap-explorer-bar">
+                <div class="roadmap-explorer-dropdown-wrap" id="roadmap-explorer-dropdown-wrap">
+                    <button class="roadmap-explorer-circle-btn" id="roadmap-explorer-circle-btn" aria-label="Topic Explorer" title="Explore Data Structures, Algorithms & Patterns across 372 Problems">
+                        <span class="explorer-btn-core">◉</span>
+                        <span class="explorer-btn-pulse"></span>
+                    </button>
+                    <span class="roadmap-explorer-btn-label">D A P</span>
+
+                    <div class="roadmap-explorer-menu" id="roadmap-explorer-menu">
+                        <button class="explorer-menu-item" data-category="structures">
+                            <span class="menu-item-icon">🧱</span>
+                            <div class="menu-item-text">
+                                <span class="menu-item-title">Data Structures</span>
+                                <span class="menu-item-desc">372 Sheet Coverage & Extras</span>
+                            </div>
+                        </button>
+                        <button class="explorer-menu-item" data-category="algorithms">
+                            <span class="menu-item-icon">⚙️</span>
+                            <div class="menu-item-text">
+                                <span class="menu-item-title">Algorithms</span>
+                                <span class="menu-item-desc">Used Across 372 & More to Learn</span>
+                            </div>
+                        </button>
+                        <button class="explorer-menu-item" data-category="patterns">
+                            <span class="menu-item-icon">🧩</span>
+                            <div class="menu-item-text">
+                                <span class="menu-item-title">Patterns</span>
+                                <span class="menu-item-desc">Recurring Problem Archetypes</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamic Topic Explorer Information Panel (Smoothly expands above existing Roadmap) -->
+            <section class="roadmap-explorer-panel-container" id="roadmap-explorer-panel-container" style="display: none;">
+                <!-- Dynamically rendered by roadmap.js -->
+            </section>
+
+            <!-- Mind-Map Interactive Viewport & Infinite Canvas -->
+            <section class="roadmap-canvas-section" id="roadmap-canvas-section">
+                <!-- Floating Mind-Map Zoom & Pan Toolbar -->
+                <div class="roadmap-canvas-toolbar" id="roadmap-canvas-toolbar">
+                    <div class="canvas-tool-group">
+                        <button class="canvas-tool-btn" id="roadmap-zoom-in-btn" title="Zoom In (+)" aria-label="Zoom In">➕</button>
+                        <button class="canvas-tool-btn" id="roadmap-zoom-out-btn" title="Zoom Out (−)" aria-label="Zoom Out">➖</button>
+                        <button class="canvas-tool-btn" id="roadmap-zoom-fit-btn" title="Fit to Screen (⛶)" aria-label="Fit to Screen">⛶</button>
+                        <button class="canvas-tool-btn" id="roadmap-zoom-reset-btn" title="Reset View (↻)" aria-label="Reset View">↻</button>
+                    </div>
+                    <div class="canvas-zoom-indicator" id="roadmap-zoom-level">100%</div>
+                    <div class="canvas-hint-pill">🖱️ Drag to pan • Scroll to zoom • Click nodes to expand</div>
+                </div>
+
+                <!-- Pannable & Zoomable Viewport -->
+                <div class="roadmap-viewport" id="roadmap-viewport">
+                    <div class="roadmap-stage" id="roadmap-stage">
+                        <!-- Dynamic SVG Curved Branch Connectors Canvas -->
+                        <svg class="roadmap-svg-canvas" id="roadmap-svg-canvas"></svg>
+
+                        <!-- Mind-Map Symmetrical Layout -->
+                        <div class="roadmap-mindmap-layout" id="roadmap-mindmap-layout">
+                            <!-- Left Wing (Phases 01, 03, 05, 07, 09, 11, 13, 15, 17) Outward Branches -->
+                            <div class="mindmap-wing mindmap-left-wing" id="mindmap-left-wing">
+                                <!-- Dynamically populated by roadmap.js -->
+                            </div>
+
+                            <!-- Central Dominant Root Hub Node -->
+                            <div class="mindmap-center-hub" id="mindmap-center-node">
+                                <div class="mindmap-center-card">
+                                    <div class="center-glow-halo"></div>
+                                    <div class="center-icon-badge">
+                                        <span class="center-road-icon">🛣️</span>
+                                    </div>
+                                    <h2 class="center-hub-title">DSA ROADMAP</h2>
+                                    <p class="center-hub-subtitle">"From Fundamentals to Advanced DSA"</p>
+                                    
+                                    <div class="center-hub-pills">
+                                        <span class="hub-pill-phase">18 PHASES</span>
+                                        <span class="hub-pill-concept">95+ CONCEPTS</span>
+                                    </div>
+                                    <div class="center-hub-tag">Concept-Based Learning Path</div>
+
+                                    <div class="center-hub-stats-row">
+                                        <div class="cstat-item">
+                                            <span class="cstat-val">4</span>
+                                            <span class="cstat-lbl">TIERS</span>
+                                        </div>
+                                        <div class="cstat-divider"></div>
+                                        <div class="cstat-item">
+                                            <span class="cstat-val">18</span>
+                                            <span class="cstat-lbl">PHASES</span>
+                                        </div>
+                                        <div class="cstat-divider"></div>
+                                        <div class="cstat-item">
+                                            <span class="cstat-val">300+</span>
+                                            <span class="cstat-lbl">SUB-TOPICS</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Right Wing (Phases 02, 04, 06, 08, 10, 12, 14, 16, 18) Outward Branches -->
+                            <div class="mindmap-wing mindmap-right-wing" id="mindmap-right-wing">
+                                <!-- Dynamically populated by roadmap.js -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </section>
         </main>
     </div>
@@ -656,18 +895,6 @@
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 18px;">
-                <div style="background: var(--surface-input); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                    <div style="font-weight: 700; margin-bottom: 6px;">Backup & Data Portability</div>
-                    <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px;">Export or restore your personal progress, notes, favorites, and streaks as JSON.</p>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn-secondary" id="export-data-btn">📥 Export JSON</button>
-                        <label class="btn-secondary" style="cursor: pointer;">
-                            📤 Import JSON
-                            <input type="file" id="import-file-input" accept=".json" style="display: none;">
-                        </label>
-                    </div>
-                </div>
-
                 <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); padding: 16px; border-radius: var(--radius-md);">
                     <div style="font-weight: 700; color: var(--diff-hard); margin-bottom: 6px;">Reset Progress</div>
                     <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px;">Clear completed problems, favorites, and streak data for this user account.</p>
@@ -685,6 +912,7 @@
 
     <!-- JavaScript Files -->
     <script src="js/data.js"></script>
+    <script src="js/basic-dsa-data.js"></script>
     <script src="js/storage.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/filters.js"></script>
@@ -693,10 +921,15 @@
     <script src="js/contests.js"></script>
     <script src="js/contest-ui.js"></script>
     <script src="js/potd.js"></script>
+    <script src="js/daily-mission.js"></script>
     <script src="js/ui.js"></script>
+    <script src="js/roadmap.js"></script>
     <script src="js/app.js"></script>
+    <script src="js/dsa-mode.js"></script>
     <script src="js/SplashCursor.js"></script>
-    <script src="js/rocket.js"></script>
     <script src="js/Circles.js"></script>
+
+    <!-- OriginKit Cursor Ring Field (Dark Theme Only WebGL Background) -->
+    <script src="js/cursor-ring-field.js"></script>
 </body>
 </html>

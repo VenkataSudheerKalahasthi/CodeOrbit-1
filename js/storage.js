@@ -95,6 +95,8 @@ const StorageManager = {
             currentStreak: 0,
             longestStreak: 0,
             lastActiveDate: null,
+            dailyMissionStars: 0,
+            dailyMissionRewardedDates: {},
             activity: [
                 {
                     type: "ACCOUNT_CREATED",
@@ -154,6 +156,8 @@ const StorageManager = {
                 currentStreak: user.currentStreak || 0,
                 longestStreak: user.longestStreak || 0,
                 lastActiveDate: user.lastActiveDate || null,
+                dailyMissionStars: user.dailyMissionStars || 0,
+                dailyMissionRewardedDates: user.dailyMissionRewardedDates || {},
                 activity: user.activity || [],
                 settings: user.settings || {}
             }
@@ -184,6 +188,8 @@ const StorageManager = {
         currentUser.currentStreak = typeof d.currentStreak === "number" ? d.currentStreak : 0;
         currentUser.longestStreak = typeof d.longestStreak === "number" ? d.longestStreak : 0;
         currentUser.lastActiveDate = d.lastActiveDate || null;
+        currentUser.dailyMissionStars = typeof d.dailyMissionStars === "number" ? d.dailyMissionStars : 0;
+        currentUser.dailyMissionRewardedDates = (d.dailyMissionRewardedDates && typeof d.dailyMissionRewardedDates === "object") ? d.dailyMissionRewardedDates : {};
         currentUser.activity = Array.isArray(d.activity) ? d.activity : [];
 
         this.saveCurrentUser(currentUser);
@@ -201,6 +207,8 @@ const StorageManager = {
         currentUser.currentStreak = 0;
         currentUser.longestStreak = 0;
         currentUser.lastActiveDate = null;
+        currentUser.dailyMissionStars = 0;
+        currentUser.dailyMissionRewardedDates = {};
         currentUser.activity = [
             {
                 type: "DATA_RESET",

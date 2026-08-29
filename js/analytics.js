@@ -52,11 +52,12 @@ const AnalyticsEngine = {
 
     // Calculate progress stats
     calculateStats(user, problems) {
-        const total = problems.length;
+        const problemList = Array.isArray(problems) ? problems : [];
+        const total = problemList.length;
         const completedSet = new Set(user ? user.completedProblems || [] : []);
-        const completed = completedSet.size;
-        const remaining = total - completed;
-        const percentage = total > 0 ? Math.round((completed / total) * 1000) / 10 : 0;
+        const completed = problemList.filter(p => completedSet.has(p.id)).length;
+        const remaining = Math.max(0, total - completed);
+        const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
         // Topic breakdown
         const topicStats = {};

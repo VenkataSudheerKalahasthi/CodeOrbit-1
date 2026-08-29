@@ -1,51 +1,37 @@
 const https = require('https');
 
-function fetchJson(url) {
-    return new Promise((resolve, reject) => {
-        const req = https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => {
-                try {
-                    resolve({ status: res.statusCode, data: JSON.parse(data) });
-                } catch (e) {
-                    resolve({ status: res.statusCode, error: e.message, raw: data.slice(0, 200) });
-                }
+async function testFetch(url, options = {}) {
+    return new Promise((resolve) => {
+        try {
+            const req = https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, timeout: 5000 }, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => {
+                    resolve({ status: res.statusCode, length: data.length, sample: data.slice(0, 200) });
+                });
             });
-        });
-        req.on('error', reject);
-        req.setTimeout(8000, () => {
-            req.destroy();
-            reject(new Error('Timeout'));
-        });
+            req.on('error', (err) => resolve({ error: err.message }));
+            req.on('timeout', () => { req.destroy(); resolve({ error: 'timeout' }); });
+        } catch (e) {
+            resolve({ error: e.message });
+        }
     });
 }
 
-async function testAll() {
-    console.log('Testing APIs...');
-    
-    // 1. Codeforces Official API
-    try {
-        const cf = await fetchJson('https://codeforces.com/api/contest.list');
-        console.log('Codeforces Status:', cf.status, 'Result count:', cf.data && cf.data.result ? cf.data.result.length : 0);
-        if (cf.data && cf.data.result) {
-            const upcomingCF = cf.data.result.filter(c => c.phase === 'BEFORE' || c.phase === 'CODING').slice(0, 3);
-            console.log('Sample CF:', JSON.stringify(upcomingCF));
-        }
-    } catch (e) {
-        console.log('Codeforces Error:', e.message);
-    }
-
-    // 2. Kontests API
-    try {
-        const kt = await fetchJson('https://kontests.net/api/v1/all');
-        console.log('Kontests API Status:', kt.status, 'Count:', Array.isArray(kt.data) ? kt.data.length : 0);
-        if (Array.isArray(kt.data)) {
-            console.log('Sample Kontests:', JSON.stringify(kt.data.slice(0, 3)));
-        }
-    } catch (e) {
-        console.log('Kontests API Error:', e.message);
+async function run() {
+    const urls = [
+        "https://codeforces.com/api/contest.list",
+        "https://kontests.net/api/v1/all",
+        "https://kontests.net/api/v1/leet_code",
+        "https://alfa-leetcode-api.onrender.com/contests",
+        "https://kenkoooo.com/atcoder/resources/contests.json",
+        "https://practiceapi.geeksforgeeks.org/api/v1/events/?type=contest",
+        "https://www.codechef.com/api/list/contests/all"
+    ];
+    for (const url of urls) {
+        const res = await testFetch(url);
+        console.log(url, res.status ? `Status: ${res.status}, Length: ${res.length}` : `Error: ${res.error}`);
+        if (res.sample) console.log("  Sample:", res.sample.slice(0, 100));
     }
 }
-
-testAll();
+run();
