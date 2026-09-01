@@ -22,7 +22,7 @@
     const MAX_POINTS = 65536;
     const TAU = Math.PI * 2;
     const MAX_COLORS = 5;
-    const DEFAULT_COLORS = ["#FF0000", "#FF1004"];
+    const DEFAULT_COLORS = ["#FF3B4F", "#E11D48", "#FF4D5A"];
     const RING_EDGE = 4;
 
     /* ------------------------------------------------------------ glsl fragments */

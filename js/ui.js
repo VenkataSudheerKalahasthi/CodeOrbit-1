@@ -26,6 +26,83 @@ const UIManager = {
         this.bindEvents();
         this.switchTab("challenges");
         this.renderApp();
+        this.loadDatabaseProblems();
+        this.loadPlatformSettings();
+        this.loadAnnouncements();
+    },
+
+    async loadPlatformSettings() {
+        if (typeof SettingsService !== "undefined") {
+            try {
+                const dailySetting = await SettingsService.getSetting('daily_problems_count');
+                if (dailySetting && dailySetting.count && typeof DailyMissionManager !== "undefined") {
+                    DailyMissionManager.configuredCount = parseInt(dailySetting.count, 10) || 3;
+                    DailyMissionManager.render();
+                }
+            } catch (e) {
+                console.warn("Platform settings hydration notice:", e);
+            }
+        }
+    },
+
+    async loadAnnouncements() {
+        const container = document.getElementById("live-announcement-container");
+        if (!container || typeof AnnouncementService === "undefined") return;
+
+        try {
+            const announcements = await AnnouncementService.getActiveAnnouncements();
+            if (!announcements || announcements.length === 0) {
+                container.style.display = "none";
+                container.innerHTML = "";
+                return;
+            }
+
+            const item = announcements[0]; // Highest priority active announcement
+            const categoryEmoji = item.category === 'Challenge' ? '🔥' : (item.category === 'Contest' ? '🏆' : (item.category === 'Update' ? '⚡' : '📢'));
+
+            container.innerHTML = `
+                <div class="live-announcement-card" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(168, 85, 247, 0.12)); border: 1px solid rgba(99, 102, 241, 0.35); border-radius: var(--radius-md, 12px); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; box-shadow: 0 8px 24px rgba(0,0,0,0.25); backdrop-filter: blur(12px);">
+                    <div style="display: flex; align-items: flex-start; gap: 12px; max-width: 800px;">
+                        <span style="font-size: 1.5rem; line-height: 1;">${categoryEmoji}</span>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                <span style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; background: rgba(99,102,241,0.25); color: #a5b4fc; padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(99,102,241,0.4);">${item.category || 'Announcement'}</span>
+                                <h4 style="font-size: 0.98rem; font-weight: 800; color: #fff; margin: 0;">${item.title}</h4>
+                            </div>
+                            <p style="font-size: 0.84rem; color: var(--text-muted, #94a3b8); margin: 0; line-height: 1.4;">${item.message}</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        ${item.link_url ? `
+                            <a href="${item.link_url}" class="btn-primary" target="_blank" rel="noopener noreferrer" style="text-decoration: none; padding: 8px 16px; font-size: 0.82rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                                <span>${item.link_text || 'View Challenge'}</span>
+                                <span>→</span>
+                            </a>
+                        ` : ''}
+                        <button onclick="document.getElementById('live-announcement-container').style.display='none'" style="background: transparent; border: none; color: var(--text-muted, #94a3b8); font-size: 1.2rem; cursor: pointer; padding: 4px 8px; border-radius: 4px;" title="Dismiss">&times;</button>
+                    </div>
+                </div>
+            `;
+            container.style.display = "block";
+        } catch (e) {
+            console.warn("Announcement display notice:", e);
+            container.style.display = "none";
+        }
+    },
+
+    async loadDatabaseProblems() {
+        if (typeof ProblemService !== "undefined" && typeof ProblemService.getPublishedProblems === "function") {
+            try {
+                const dbProblems = await ProblemService.getPublishedProblems();
+                if (Array.isArray(dbProblems) && dbProblems.length > 0) {
+                    window.PROBLEMS = dbProblems;
+                    this.renderProblemLibrary();
+                    this.renderStats();
+                }
+            } catch (err) {
+                console.warn("Database problems hydration notice:", err);
+            }
+        }
     },
 
     initTheme() {
@@ -316,8 +393,13 @@ const UIManager = {
             s.classList.toggle("active", s.id === `view-${tab}`);
         });
 
-        if (tab === "challenges" && typeof ContestUI !== "undefined" && ContestUI.renderAll) {
-            ContestUI.renderAll();
+        if (tab === "challenges") {
+            if (typeof ContestUI !== "undefined" && ContestUI.renderAll) {
+                ContestUI.renderAll();
+            }
+            if (typeof LeaderboardUI !== "undefined" && LeaderboardUI.loadLeaderboard) {
+                LeaderboardUI.loadLeaderboard(undefined, true);
+            }
         } else if (tab === "mastery") {
             this.renderApp();
         } else if (tab === "roadmap" && typeof RoadmapUI !== "undefined" && RoadmapUI.renderRoadmap) {
@@ -330,15 +412,38 @@ const UIManager = {
         const loginBtn = document.getElementById("nav-login-btn");
         const profileBtn = document.getElementById("nav-profile-btn");
         const usernameDisplay = document.getElementById("nav-username-display");
+        const userAvatar = document.getElementById("nav-user-avatar");
 
-        if (user) {
+        const mobileLoginBtn = document.getElementById("mobile-nav-login-btn");
+        const mobileProfileBtn = document.getElementById("mobile-nav-profile-btn");
+        const mobileUsernameDisplay = document.getElementById("mobile-nav-username-display");
+        const mobileUserAvatar = document.getElementById("mobile-nav-user-avatar");
+
+        if (user && user.username) {
+            const rawUsername = user.displayName || user.username || "User";
+            const initial = rawUsername.trim().charAt(0).toUpperCase() || "U";
+
             if (loginBtn) loginBtn.style.display = "none";
             if (profileBtn) profileBtn.style.display = "flex";
-            if (usernameDisplay) usernameDisplay.textContent = user.username;
+            if (usernameDisplay) usernameDisplay.textContent = rawUsername;
+            if (userAvatar) userAvatar.textContent = initial;
+
+            if (mobileLoginBtn) mobileLoginBtn.style.display = "none";
+            if (mobileProfileBtn) mobileProfileBtn.style.display = "flex";
+            if (mobileUsernameDisplay) mobileUsernameDisplay.textContent = rawUsername;
+            if (mobileUserAvatar) mobileUserAvatar.textContent = initial;
+
             this.renderNavStars(user);
         } else {
             if (loginBtn) loginBtn.style.display = "flex";
             if (profileBtn) profileBtn.style.display = "none";
+            if (usernameDisplay) usernameDisplay.textContent = "User";
+            if (userAvatar) userAvatar.textContent = "U";
+
+            if (mobileLoginBtn) mobileLoginBtn.style.display = "flex";
+            if (mobileProfileBtn) mobileProfileBtn.style.display = "none";
+            if (mobileUsernameDisplay) mobileUsernameDisplay.textContent = "User";
+            if (mobileUserAvatar) mobileUserAvatar.textContent = "U";
         }
 
         this.renderStats();
@@ -390,7 +495,7 @@ const UIManager = {
 
         const welcomeName = document.getElementById("welcome-user-name");
         if (welcomeName) {
-            welcomeName.textContent = user ? user.username : "Guest";
+            welcomeName.textContent = user ? (user.displayName || user.username || "Guest") : "Guest";
         }
 
         const heroSub = document.getElementById("hero-sub-progress");
@@ -816,29 +921,71 @@ const UIManager = {
         }
 
         const canonicalId = problem.id;
+        const strId = String(canonicalId).trim();
         if (!user.completedProblems) user.completedProblems = [];
-        const idx = user.completedProblems.findIndex(p => p === canonicalId || p === idNum || String(p) === String(canonicalId));
+        const idx = user.completedProblems.findIndex(p => String(p).trim() === strId);
         const title = problem.title || `Problem #${canonicalId}`;
+        const isNowCompleted = (idx === -1);
+        const todayStr = (typeof AnalyticsEngine !== "undefined" && AnalyticsEngine.getLocalDateKey)
+            ? AnalyticsEngine.getLocalDateKey(new Date())
+            : new Date().toISOString().split("T")[0];
 
-        if (idx === -1) {
+        if (!user.completionDates) user.completionDates = {};
+
+        if (isNowCompleted) {
             user.completedProblems.push(canonicalId);
+            user.completionDates[todayStr] = (user.completionDates[todayStr] || 0) + 1;
             AnalyticsEngine.updateStreakOnCompletion(user);
-            AnalyticsEngine.logActivity(user, "PROBLEM_COMPLETED", `Completed: ${title}`);
+            AnalyticsEngine.logActivity(user, "PROBLEM_COMPLETED", `Completed: ${title}`, canonicalId);
             this.showToast(`Completed: ${title}`);
         } else {
             user.completedProblems.splice(idx, 1);
-            const todayStr = new Date().toISOString().split("T")[0];
-            if (user.completionDates && typeof user.completionDates[todayStr] === "number" && user.completionDates[todayStr] > 0) {
+            if (typeof user.completionDates[todayStr] === "number" && user.completionDates[todayStr] > 0) {
                 user.completionDates[todayStr] -= 1;
             }
-            AnalyticsEngine.logActivity(user, "PROBLEM_UNCOMPLETED", `Unmarked: ${title}`);
+            AnalyticsEngine.logActivity(user, "PROBLEM_UNCOMPLETED", `Unmarked: ${title}`, canonicalId);
             this.showToast(`Unmarked: ${title}`);
         }
 
-        StorageManager.saveCurrentUser(user);
+        // Strictly deduplicate completed problems
+        user.completedProblems = [...new Set(user.completedProblems)];
+
+        // Save locally first for responsive UI
+        StorageManager.saveCurrentUserLocally(user);
+
+        // Directly persist to Supabase
+        if (user.id && window.ProgressService) {
+            window.ProgressService.setProblemCompletion(user.id, canonicalId, isNowCompleted);
+        }
+
+        if (user.id && window.StatsService) {
+            window.StatsService.saveUserStats(user.id, {
+                stars: user.dailyMissionStars || 0,
+                current_streak: user.currentStreak || 0,
+                longest_streak: user.longestStreak || 0,
+                total_completed: user.completedProblems.length,
+                last_activity_date: todayStr
+            });
+        }
+
+        if (user.id && window.ActivityService) {
+            window.ActivityService.recordDailyActivity(user.id, todayStr, isNowCompleted ? 1 : -1, 0);
+        }
+
+        // Check if daily mission star should be awarded
+        if (isNowCompleted && typeof DailyMissionManager !== "undefined" && DailyMissionManager.checkAndAwardDailyMissionStar) {
+            DailyMissionManager.checkAndAwardDailyMissionStar();
+        }
+
         this.renderApp();
         if (typeof StreakCalendar !== "undefined") {
             StreakCalendar.render();
+        }
+        if (typeof DailyMissionManager !== "undefined") {
+            DailyMissionManager.render();
+        }
+        if (typeof LeaderboardUI !== "undefined" && LeaderboardUI.loadLeaderboard) {
+            LeaderboardUI.loadLeaderboard(undefined, true);
         }
     },
 
@@ -860,8 +1007,9 @@ const UIManager = {
 
         if (!user.favorites) user.favorites = [];
         const idx = user.favorites.indexOf(problemId);
+        const isFav = (idx === -1);
 
-        if (idx === -1) {
+        if (isFav) {
             user.favorites.push(problemId);
             this.showToast("Added to favorites");
         } else {
@@ -869,7 +1017,12 @@ const UIManager = {
             this.showToast("Removed from favorites");
         }
 
-        StorageManager.saveCurrentUser(user);
+        StorageManager.saveCurrentUserLocally(user);
+
+        if (user.id && window.ProgressService) {
+            window.ProgressService.toggleFavorite(user.id, problemId, isFav);
+        }
+
         this.renderApp();
     },
 
@@ -912,7 +1065,12 @@ const UIManager = {
             this.showToast("Note cleared.");
         }
 
-        StorageManager.saveCurrentUser(user);
+        StorageManager.saveCurrentUserLocally(user);
+
+        if (user.id && window.ProgressService) {
+            window.ProgressService.saveNote(user.id, problemId, noteText);
+        }
+
         const modal = document.getElementById("notes-modal-overlay");
         if (modal) modal.classList.remove("active");
         this.renderApp();

@@ -43,25 +43,29 @@ const DailyMissionManager = {
         return [];
     },
 
+    configuredCount: 3,
+
     getTodayMission() {
         const dateStr = this.getTodayDateString();
         const key = this.STORAGE_KEY_PREFIX + dateStr;
         const dataset = this.getDataset();
         if (!dataset || dataset.length === 0) return null;
 
+        const targetCount = parseInt(this.configuredCount, 10) || 3;
+
         // Try loading stored mission IDs for today's date
         try {
             const raw = localStorage.getItem(key);
             if (raw) {
                 const storedIds = JSON.parse(raw);
-                if (Array.isArray(storedIds) && storedIds.length === 3) {
+                if (Array.isArray(storedIds) && storedIds.length === targetCount) {
                     const matchedProblems = storedIds.map(id => {
                         return dataset.find(p => p.id === id || String(p.id) === String(id)) || 
                                (typeof PROBLEMS !== "undefined" ? PROBLEMS.find(p => p.id === id || String(p.id) === String(id)) : null) ||
                                (typeof BASIC_DSA_PROBLEMS !== "undefined" ? BASIC_DSA_PROBLEMS.find(p => p.id === id || String(p.id) === String(id)) : null);
                     }).filter(Boolean);
 
-                    if (matchedProblems.length === 3) {
+                    if (matchedProblems.length === targetCount) {
                         return {
                             date: dateStr,
                             problems: matchedProblems
@@ -73,11 +77,7 @@ const DailyMissionManager = {
             console.warn("Failed to parse daily mission cache:", e);
         }
 
-        // Generate a new 3-problem mission for today (1 Easy, 1 Medium, 1 Hard)
-        const user = (typeof StorageManager !== "undefined" && StorageManager.getCurrentUser) ? StorageManager.getCurrentUser() : null;
-        const completedList = user ? user.completedProblems || [] : [];
-        const isDone = (id) => completedList.some(cId => cId === id || String(cId) === String(id));
-
+        // Generate deterministic N-problem mission for today (1 Easy, 1 Medium, 1 Hard, plus additional if configured)
         const easyPool = dataset.filter(p => (p.difficulty || "").toLowerCase() === "easy");
         const mediumPool = dataset.filter(p => (p.difficulty || "").toLowerCase() === "medium");
         const hardPool = dataset.filter(p => {
@@ -87,20 +87,49 @@ const DailyMissionManager = {
 
         const seed = this.getDailySeed(dateStr);
 
-        function pickProblem(pool, subSeed) {
+        function pickProblem(pool, subSeed, pickedSet) {
             if (!pool || pool.length === 0) {
+                for (let k = 0; k < dataset.length; k++) {
+                    const candidate = dataset[(subSeed + k) % dataset.length];
+                    if (!pickedSet.has(String(candidate.id))) return candidate;
+                }
                 return dataset[subSeed % dataset.length];
             }
-            const uncompleted = pool.filter(p => !isDone(p.id));
-            const candidatePool = uncompleted.length > 0 ? uncompleted : pool;
-            return candidatePool[subSeed % candidatePool.length];
+            for (let k = 0; k < pool.length; k++) {
+                const candidate = pool[(subSeed + k) % pool.length];
+                if (!pickedSet.has(String(candidate.id))) return candidate;
+            }
+            return pool[subSeed % pool.length];
         }
 
-        const easyP = pickProblem(easyPool, seed);
-        const medP = pickProblem(mediumPool, seed + 11);
-        const hardP = pickProblem(hardPool, seed + 23);
+        const pickedSet = new Set();
+        const missionProblems = [];
 
-        const missionProblems = [easyP, medP, hardP];
+        // 1. Easy
+        const easyP = pickProblem(easyPool, seed, pickedSet);
+        if (easyP) { pickedSet.add(String(easyP.id)); missionProblems.push(easyP); }
+
+        // 2. Medium
+        const medP = pickProblem(mediumPool, seed + 11, pickedSet);
+        if (medP) { pickedSet.add(String(medP.id)); missionProblems.push(medP); }
+
+        // 3. Hard
+        const hardP = pickProblem(hardPool, seed + 23, pickedSet);
+        if (hardP) { pickedSet.add(String(hardP.id)); missionProblems.push(hardP); }
+
+        // 4. Additional problems if targetCount > 3
+        while (missionProblems.length < targetCount) {
+            const idx = missionProblems.length;
+            const extraPool = idx % 2 === 0 ? hardPool : mediumPool;
+            const extraP = pickProblem(extraPool, seed + (idx * 17), pickedSet);
+            if (extraP) {
+                pickedSet.add(String(extraP.id));
+                missionProblems.push(extraP);
+            } else {
+                break;
+            }
+        }
+
         const missionIds = missionProblems.map(p => p.id);
 
         try {
@@ -189,7 +218,33 @@ const DailyMissionManager = {
             AnalyticsEngine.logActivity(user, "DAILY_MISSION_STAR_EARNED", `Earned ⭐ for completing Daily DSA Mission (${dateStr})`);
         }
 
-        StorageManager.saveCurrentUser(user);
+        // Persist locally
+        StorageManager.saveCurrentUserLocally(user);
+
+        // Persist to Supabase cloud
+        if (user.id && window.ChallengeService) {
+            window.ChallengeService.setChallengeCompletion(
+                user.id,
+                dateStr,
+                'daily_mission_' + dateStr,
+                'daily_mission',
+                true,
+                1
+            );
+        }
+
+        if (user.id && window.StatsService) {
+            window.StatsService.saveUserStats(user.id, {
+                stars: user.dailyMissionStars,
+                current_streak: user.currentStreak || 0,
+                longest_streak: user.longestStreak || 0,
+                total_completed: (user.completedProblems || []).length
+            });
+        }
+
+        if (user.id && window.ActivityService) {
+            window.ActivityService.recordDailyActivity(user.id, dateStr, 0, 1);
+        }
 
         // Trigger subtle navbar star animation
         this.triggerStarPopAnimation();

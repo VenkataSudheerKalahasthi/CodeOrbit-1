@@ -258,6 +258,7 @@ const ContestManager = {
         if (!all[key]) all[key] = {};
 
         const currentState = Boolean(all[key][contestId]);
+        const newState = !currentState;
         if (currentState) {
             delete all[key][contestId];
         } else {
@@ -265,7 +266,16 @@ const ContestManager = {
         }
 
         this.saveAllReminders(all);
-        return !currentState;
+
+        // Cloud sync if authenticated
+        const currentUser = (typeof StorageManager !== "undefined" && StorageManager.getCurrentUser) ? StorageManager.getCurrentUser() : null;
+        if (currentUser?.id && window.ContestService) {
+            window.ContestService.toggleRegistration(currentUser.id, contestId, newState).catch(err => {
+                console.warn("Contest reminder cloud sync error:", err);
+            });
+        }
+
+        return newState;
     },
 
     /**

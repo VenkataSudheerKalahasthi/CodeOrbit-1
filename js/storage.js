@@ -1,17 +1,16 @@
 /**
  * Storage Manager for DSA Practice Tracker
- * Handles multi-user LocalStorage isolation, Web Crypto SHA-256 password hashing,
- * and user progress persistence.
+ * Serves as the local cache and synchronization bridge between the CodeOrbit UI
+ * and Supabase cloud persistence layer.
  */
 
 const StorageManager = {
     STORAGE_KEY_USERS: "dsa_tracker_users_v1",
     STORAGE_KEY_CURRENT_USER: "dsa_tracker_current_user_id_v1",
 
-    // Password Hashing via Web Crypto API (SHA-256)
+    // Password Hashing via Web Crypto API (SHA-256 fallback for offline local accounts)
     async hashPassword(password) {
         if (!window.crypto || !window.crypto.subtle) {
-            // Fallback for non-secure contexts if any
             return btoa(password);
         }
         const encoder = new TextEncoder();
@@ -58,12 +57,82 @@ const StorageManager = {
         return users.find(u => u.id === userId) || null;
     },
 
-    saveCurrentUser(updatedUser) {
+    getUserById(userId) {
+        if (!userId) return null;
+        const users = this.getUsers();
+        return users.find(u => u.id === userId) || null;
+    },
+
+    saveCurrentUserLocally(updatedUser) {
+        if (!updatedUser) return;
         const users = this.getUsers();
         const idx = users.findIndex(u => u.id === updatedUser.id);
         if (idx !== -1) {
             users[idx] = updatedUser;
-            this.saveUsers(users);
+        } else {
+            users.push(updatedUser);
+        }
+        this.saveUsers(users);
+    },
+
+    saveCurrentUser(updatedUser, syncToCloud = true) {
+        if (!updatedUser) return;
+        this.saveCurrentUserLocally(updatedUser);
+
+        // Asynchronously sync with Supabase in background if requested
+        if (syncToCloud) {
+            this.syncToCloudBackground(updatedUser);
+        }
+    },
+
+    /**
+     * Non-blocking background sync of updated user progress to Supabase
+     */
+    async syncToCloudBackground(user) {
+        if (!user || !user.id || typeof window.SupabaseConfig === 'undefined' || !window.SupabaseConfig.isConfigured()) {
+            return;
+        }
+
+        try {
+            const userId = user.id;
+
+            // 1. Sync problem progress
+            if (Array.isArray(user.completedProblems) && window.ProgressService) {
+                const items = user.completedProblems.map(pId => ({
+                    problem_id: String(pId),
+                    completed: true,
+                    completed_at: (user.completionDates && user.completionDates[pId]) || new Date().toISOString()
+                }));
+                await ProgressService.batchSaveProblemProgress(userId, items);
+            }
+
+            // 2. Sync favorites
+            if (Array.isArray(user.favorites) && window.ProgressService) {
+                await ProgressService.batchSaveFavorites(userId, user.favorites);
+            }
+
+            // 3. Sync notes
+            if (user.notes && window.ProgressService) {
+                await ProgressService.batchSaveNotes(userId, user.notes);
+            }
+
+            // 4. Sync stats
+            if (window.StatsService) {
+                await StatsService.saveUserStats(userId, {
+                    stars: user.dailyMissionStars || 0,
+                    current_streak: user.currentStreak || 0,
+                    longest_streak: user.longestStreak || 0,
+                    total_completed: (user.completedProblems || []).length,
+                    last_activity_date: user.lastActiveDate || new Date().toISOString().split('T')[0]
+                });
+            }
+
+            // 5. Sync activity
+            if (user.completionDates && window.ActivityService) {
+                await ActivityService.batchSaveActivity(userId, user.completionDates);
+            }
+        } catch (err) {
+            console.warn("StorageManager: Background cloud sync error:", err.message);
         }
     },
 
@@ -105,7 +174,7 @@ const StorageManager = {
                 }
             ],
             settings: {
-                theme: "dark"
+                theme: localStorage.getItem("codecal_theme") || "dark"
             }
         };
 
@@ -138,6 +207,9 @@ const StorageManager = {
 
     logout() {
         this.setCurrentUserId(null);
+        if (window.AuthService) {
+            window.AuthService.signOut().catch(() => {});
+        }
     },
 
     exportUserData() {

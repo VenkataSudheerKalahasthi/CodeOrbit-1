@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeOrbit — Authenticating...</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .callback-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .callback-card {
+            background: rgba(18, 24, 38, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-lg, 16px);
+            padding: 40px 32px;
+            max-width: 480px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 40px rgba(99, 102, 241, 0.15);
+        }
+
+        .status-icon {
+            font-size: 3.5rem;
+            margin-bottom: 16px;
+            display: inline-block;
+            animation: floatIcon 3s ease-in-out infinite;
+        }
+
+        @keyframes floatIcon {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+
+        .spinner-ring {
+            width: 48px;
+            height: 48px;
+            border: 4px solid rgba(99, 102, 241, 0.2);
+            border-top: 4px solid #818cf8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .callback-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        .callback-desc {
+            font-size: 0.92rem;
+            color: var(--text-muted, #94a3b8);
+            line-height: 1.6;
+            margin-bottom: 24px;
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .countdown-badge {
+            display: inline-block;
+            margin-top: 16px;
+            font-size: 0.78rem;
+            color: #818cf8;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div id="cosmic-bg" aria-hidden="true"></div>
+
+    <div class="callback-wrapper">
+        <!-- Loading State -->
+        <div id="callback-loading" class="callback-card">
+            <div class="spinner-ring"></div>
+            <h1 class="callback-title">Verifying Authentication</h1>
+            <p class="callback-desc">Establishing your secure CodeOrbit session and confirming your account...</p>
+        </div>
+
+        <!-- Success State -->
+        <div id="callback-success" class="callback-card" style="display: none;">
+            <div class="status-icon">🚀</div>
+            <h1 class="callback-title" style="color: #4ade80;">Email Confirmed!</h1>
+            <p class="callback-desc" id="success-desc">Your email has been verified successfully. Welcome to CodeOrbit!</p>
+            <div class="action-btns">
+                <a href="index.html" class="btn-primary" style="text-decoration: none; width: 100%;">
+                    Continue to CodeOrbit
+                </a>
+            </div>
+            <div class="countdown-badge" id="countdown-text">Redirecting in 3s...</div>
+        </div>
+
+        <!-- Error State -->
+        <div id="callback-error" class="callback-card" style="display: none;">
+            <div class="status-icon">⚠️</div>
+            <h1 class="callback-title" style="color: #f87171;">Verification Issue</h1>
+            <p class="callback-desc" id="error-desc">
+                We could not complete email verification. The link may be expired or already used.
+            </p>
+            <div class="action-btns">
+                <a href="index.html" class="btn-primary" style="text-decoration: none;">
+                    Go to Sign In
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/services/auth-service.js"></script>
+    <script src="js/services/profile-service.js"></script>
+    <script src="js/services/progress-service.js"></script>
+    <script src="js/services/stats-service.js"></script>
+    <script src="js/services/activity-service.js"></script>
+    <script src="js/services/challenge-service.js"></script>
+    <script src="js/services/contest-service.js"></script>
+    <script src="js/services/roadmap-service.js"></script>
+    <script src="js/services/migration-service.js"></script>
+    <script src="js/storage.js"></script>
+
+    <script>
+        (async function () {
+            const loadingEl = document.getElementById('callback-loading');
+            const successEl = document.getElementById('callback-success');
+            const errorEl = document.getElementById('callback-error');
+            const errorDescEl = document.getElementById('error-desc');
+            const countdownEl = document.getElementById('countdown-text');
+
+            // Parse URL parameters and hash fragment
+            const urlParams = new URLSearchParams(window.location.search);
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+
+            const error = urlParams.get('error') || hashParams.get('error');
+            const errorCode = urlParams.get('error_code') || hashParams.get('error_code');
+            const errorDesc = urlParams.get('error_description') || hashParams.get('error_description');
+
+            if (error || errorCode) {
+                loadingEl.style.display = 'none';
+                errorEl.style.display = 'block';
+
+                if (errorCode === 'otp_expired' || (errorDesc && errorDesc.toLowerCase().includes('expired'))) {
+                    errorDescEl.innerHTML = `
+                        <strong>Confirmation link expired:</strong><br>
+                        This link is no longer valid. Please open CodeOrbit and request a new confirmation email.
+                    `;
+                } else if (errorDesc) {
+                    errorDescEl.textContent = decodeURIComponent(errorDesc.replace(/\+/g, ' '));
+                }
+                return;
+            }
+
+            try {
+                // Initialize Supabase Client
+                const client = window.SupabaseConfig ? window.SupabaseConfig.getClient() : null;
+                if (!client) {
+                    throw new Error('Supabase client failed to initialize.');
+                }
+
+                // Check for PKCE 'code' query parameter exchange
+                const code = urlParams.get('code');
+                if (code) {
+                    const { error: exchangeErr } = await client.auth.exchangeCodeForSession(code);
+                    if (exchangeErr) {
+                        console.warn('PKCE code exchange error:', exchangeErr.message);
+                    }
+                }
+
+                // Wait for session resolution from hash fragment or SDK
+                let session = null;
+                const { data: sessionData } = await client.auth.getSession();
+                session = sessionData?.session;
+
+                if (!session?.user) {
+                    // Brief wait for auth state change event if token is still parsing
+                    await new Promise(resolve => {
+                        const timeout = setTimeout(resolve, 2000);
+                        const { data: { subscription } } = client.auth.onAuthStateChange((event, newSession) => {
+                            if (newSession?.user) {
+                                session = newSession;
+                                clearTimeout(timeout);
+                                if (subscription && subscription.unsubscribe) subscription.unsubscribe();
+                                resolve();
+                            }
+                        });
+                    });
+                }
+
+                if (session?.user) {
+                    // Update user profile and touch last active
+                    if (window.ProfileService) {
+                        await ProfileService.touchLastActive(session.user.id);
+                    }
+
+                    // Restore cloud state to local storage
+                    if (window.MigrationService) {
+                        await MigrationService.restoreFromCloud(session.user.id);
+                    }
+
+                    loadingEl.style.display = 'none';
+                    successEl.style.display = 'block';
+
+                    let secondsLeft = 3;
+                    const interval = setInterval(() => {
+                        secondsLeft--;
+                        if (countdownEl) {
+                            countdownEl.textContent = `Redirecting in ${secondsLeft}s...`;
+                        }
+                        if (secondsLeft <= 0) {
+                            clearInterval(interval);
+                            window.location.href = 'index.html';
+                        }
+                    }, 1000);
+                } else {
+                    // No session detected from callback
+                    loadingEl.style.display = 'none';
+                    errorEl.style.display = 'block';
+                    errorDescEl.innerHTML = `
+                        No active authentication session could be verified.<br>
+                        If your email is already confirmed, please sign in with your credentials.
+                    `;
+                }
+            } catch (err) {
+                console.error('Auth callback exception:', err);
+                loadingEl.style.display = 'none';
+                errorEl.style.display = 'block';
+                errorDescEl.textContent = err.message || 'An unexpected error occurred during confirmation.';
+            }
+        })();
+    </script>
+</body>
+</html>

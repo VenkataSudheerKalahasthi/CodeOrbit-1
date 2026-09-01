@@ -3328,11 +3328,14 @@
         }
     };
 
+    RoadmapUI.ROADMAP_PHASES = ROADMAP_PHASES;
+
     if (typeof window !== "undefined") {
         window.RoadmapUI = RoadmapUI;
+        window.ROADMAP_PHASES = ROADMAP_PHASES;
     }
 
     if (typeof module !== "undefined" && module.exports) {
-        module.exports = RoadmapUI;
+        module.exports = { RoadmapUI, ROADMAP_PHASES };
     }
 })();

@@ -4,8 +4,8 @@
   "description": "DSA Master - Practice & Progress Tracker",
   "main": "index.html",
   "scripts": {
-    "start": "npx -y serve .",
-    "dev": "npx -y serve ."
+    "start": "npx -y serve -l 3000 .",
+    "dev": "npx -y serve -l 3000 ."
   },
   "license": "ISC",
   "dependencies": {

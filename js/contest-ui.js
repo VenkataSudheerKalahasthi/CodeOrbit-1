@@ -345,7 +345,7 @@ const ContestUI = {
     getCurrentUserId() {
         if (typeof StorageManager !== "undefined" && StorageManager.getCurrentUser) {
             const user = StorageManager.getCurrentUser();
-            return user ? user.username : "guest";
+            return user ? user.id : "guest";
         }
         return "guest";
     },

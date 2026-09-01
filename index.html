@@ -26,6 +26,54 @@
          ============================================================ -->
     <div id="cosmic-bg" aria-hidden="true"></div>
 
+    <!-- ============================================================
+         LIGHT THEME ATMOSPHERIC BACKGROUND LAYERS (pointer-events: none)
+         Fixed behind all UI content, light theme only.
+         ============================================================ -->
+    <div id="light-theme-atmosphere" class="light-theme-atmosphere" aria-hidden="true">
+        <!-- 1. Soft Atmospheric Lavender & Violet Blobs -->
+        <div class="lt-blob lt-blob-orbit"></div>
+        <div class="lt-blob lt-blob-tl"></div>
+        <div class="lt-blob lt-blob-ml"></div>
+        <div class="lt-blob lt-blob-tr"></div>
+        <div class="lt-blob lt-blob-mr"></div>
+        <div class="lt-blob lt-blob-bl"></div>
+        <div class="lt-blob lt-blob-br"></div>
+
+        <!-- 2. Subtle Flowing Wave & Contour Patterns (Lower-left, Lower-right) -->
+        <svg class="lt-waves lt-waves-bl" viewBox="0 0 700 500" fill="none" preserveAspectRatio="none">
+            <path d="M-50 480 C 150 420, 280 490, 480 390 S 650 320, 750 340" stroke="rgba(167, 139, 250, 0.12)" stroke-width="1.2" stroke-linecap="round"/>
+            <path d="M-80 430 C 120 370, 260 450, 440 350 S 610 280, 720 300" stroke="rgba(139, 92, 246, 0.09)" stroke-width="1" stroke-dasharray="6 4"/>
+            <path d="M-30 380 C 160 320, 310 400, 490 310 S 660 240, 760 260" stroke="rgba(196, 181, 253, 0.14)" stroke-width="1.2"/>
+            <path d="M-60 330 C 130 270, 280 350, 450 270 S 620 200, 730 220" stroke="rgba(167, 139, 250, 0.08)" stroke-width="1"/>
+            <path d="M-40 280 C 150 220, 300 300, 470 230 S 640 160, 740 180" stroke="rgba(139, 92, 246, 0.07)" stroke-width="0.8" stroke-dasharray="8 6"/>
+        </svg>
+
+        <svg class="lt-waves lt-waves-br" viewBox="0 0 700 500" fill="none" preserveAspectRatio="none">
+            <path d="M750 480 C 550 420, 420 490, 220 390 S 50 320, -50 340" stroke="rgba(167, 139, 250, 0.12)" stroke-width="1.2" stroke-linecap="round"/>
+            <path d="M780 430 C 580 370, 440 450, 260 350 S 90 280, -20 300" stroke="rgba(139, 92, 246, 0.09)" stroke-width="1" stroke-dasharray="6 4"/>
+            <path d="M730 380 C 540 320, 390 400, 210 310 S 40 240, -60 260" stroke="rgba(196, 181, 253, 0.14)" stroke-width="1.2"/>
+            <path d="M760 330 C 570 270, 420 350, 250 270 S 80 200, -30 220" stroke="rgba(167, 139, 250, 0.08)" stroke-width="1"/>
+            <path d="M740 280 C 550 220, 400 300, 230 230 S 60 160, -40 180" stroke="rgba(139, 92, 246, 0.07)" stroke-width="0.8" stroke-dasharray="8 6"/>
+        </svg>
+
+        <!-- 3. Faint Peripheral Micro-dot Mesh Overlay -->
+        <div class="lt-dot-lattice"></div>
+
+        <!-- 4. Very Few Delicate Floating Light Particles -->
+        <div class="lt-particles-wrap">
+            <span class="lt-dot-particle p1"></span>
+            <span class="lt-dot-particle p2"></span>
+            <span class="lt-dot-particle p3"></span>
+            <span class="lt-dot-particle p4"></span>
+            <span class="lt-dot-particle p5"></span>
+            <span class="lt-dot-particle p6"></span>
+            <span class="lt-dot-particle p7"></span>
+            <span class="lt-dot-particle p8"></span>
+        </div>
+    </div>
+
+
 
     <div class="app-container">
         <!-- Floating Navbar -->
@@ -96,7 +144,11 @@
         <!-- View Section 1: Challenges / CodeOrbit Home Page (ACTIVE BY DEFAULT) -->
         <main id="view-challenges" class="view-section active">
 
+            <!-- Futuristic Left Vertical Leaderboard Rail -->
+            <aside id="challenges-leaderboard-rail" class="leaderboard-rail-wrap" aria-label="Competitive Leaderboard"></aside>
 
+            <!-- Dynamic Live Platform Announcement Banner (Database-driven from Supabase) -->
+            <div id="live-announcement-container" class="announcement-banner-wrap" style="display: none; margin-bottom: 20px;"></div>
 
             <!-- Starting Page Top Action Area -->
             <section class="codecal-hero">
@@ -316,11 +368,10 @@
                         <div class="streak-footer">
                             <div class="streak-legend">
                                 <span>Less</span>
-                                <div class="legend-box level-0" title="0 problems"></div>
-                                <div class="legend-box level-1" title="1 problem"></div>
-                                <div class="legend-box level-2" title="2-3 problems"></div>
-                                <div class="legend-box level-3" title="4-5 problems"></div>
-                                <div class="legend-box level-4" title="6+ problems"></div>
+                                <div class="legend-box level-0"></div>
+                                <div class="legend-box level-1"></div>
+                                <div class="legend-box level-2"></div>
+                                <div class="legend-box level-3"></div>
                                 <span>More</span>
                             </div>
                             <div class="streak-today-indicator">
@@ -376,11 +427,11 @@
                         <p class="footer-desc">The definitive platform for competitive programmers and software engineers — real-time contest telemetry, live countdowns, and structured DSA mastery.</p>
                         <div class="footer-crafted">Crafted with passion by <strong>Sudheer_kalahasthi</strong></div>
                         <div class="footer-social-links">
-<a href="https://github.com/VenkataSudheerKalahasthi" target="_blank" class="social-icon" title="GitHub" aria-label="GitHub">
-    <svg height="32" width="32" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" style="display: inline-block; vertical-align: middle;">
-        <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82A7.48 7.48 0 0 0 8 3.06c-.68.01-1.36.09-2 .32-1.53-1.04-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.16.73.72.82 1.13.16.45.68 1.35 3.06.88.01.47.01.92.01 1.05 0 .21-.15.47-.56.38A8.006 8.006 0 0 1 0 8c0-4.42 3.58-8 8-8z"></path>
-    </svg>
-</a>
+                            <a href="https://github.com/VenkataSudheerKalahasthi" target="_blank" class="social-icon" title="GitHub" aria-label="GitHub">
+                                <svg height="18" width="18" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                                    <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82A7.48 7.48 0 0 0 8 3.06c-.68.01-1.36.09-2 .32-1.53-1.04-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.16.73.72.82 1.13.16.45.68 1.35 3.06.88.01.47.01.92.01 1.05 0 .21-.15.47-.56.38A8.006 8.006 0 0 1 0 8c0-4.42 3.58-8 8-8z"></path>
+                                </svg>
+                            </a>
                             <a href="https://www.linkedin.com/in/kalahasthi-venkata-sudheer-39a022322?utm_source=share_via&utm_content=profile&utm_medium=member_android" target="_blank" class="social-icon" title="LinkedIn"><span class="linkedin-logo">in</span></a>
                             <a href="https://x.com/k_sudheer_045" target="_blank" class="social-icon" title="Twitter">𝕏</a>
                         </div>
@@ -828,7 +879,7 @@
         </div>
     </div>
 
-    <!-- Auth Modal (Login / Signup) -->
+    <!-- Auth Modal (Login / Signup / Password Reset) -->
     <div id="auth-modal-overlay" class="modal-overlay">
         <div class="modal-box">
             <div class="modal-header">
@@ -837,19 +888,46 @@
             </div>
 
             <form id="auth-form" data-mode="login">
-                <div class="form-group">
+                <div class="form-group" id="auth-username-group" style="display: none;">
                     <label for="auth-username">Username</label>
-                    <input type="text" id="auth-username" class="form-input" placeholder="Enter username..." required>
+                    <input type="text" id="auth-username" class="form-input" placeholder="Choose a unique username...">
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" id="auth-email-group">
+                    <label for="auth-email" id="auth-email-label">Email or Username</label>
+                    <input type="text" id="auth-email" class="form-input" placeholder="Enter your email or username..." required>
+                </div>
+
+                <div class="form-group" id="auth-password-group">
                     <label for="auth-password">Password</label>
-                    <input type="password" id="auth-password" class="form-input" placeholder="Enter password..." required>
+                    <input type="password" id="auth-password" class="form-input" placeholder="Enter password...">
+                    
+                    <!-- Password Strength Checklist & Bar (Visible on Signup) -->
+                    <div id="auth-password-strength-wrap" style="display: none; margin-top: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; margin-bottom: 4px;">
+                            <span style="color: var(--text-muted);">Password Strength:</span>
+                            <span id="pwd-strength-label" style="font-weight: 700; color: #ef4444;">Too Weak</span>
+                        </div>
+                        <div style="height: 4px; width: 100%; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; margin-bottom: 8px;">
+                            <div id="pwd-strength-bar" style="height: 100%; width: 0%; background: #ef4444; transition: all 0.3s ease;"></div>
+                        </div>
+                        <div id="pwd-req-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 0.72rem;">
+                            <div id="pwd-req-len" style="color: #ef4444; display: flex; align-items: center; gap: 4px;"><span>✕</span> 8+ characters</div>
+                            <div id="pwd-req-upper" style="color: #ef4444; display: flex; align-items: center; gap: 4px;"><span>✕</span> Uppercase (A-Z)</div>
+                            <div id="pwd-req-lower" style="color: #ef4444; display: flex; align-items: center; gap: 4px;"><span>✕</span> Lowercase (a-z)</div>
+                            <div id="pwd-req-num" style="color: #ef4444; display: flex; align-items: center; gap: 4px;"><span>✕</span> Number (0-9)</div>
+                            <div id="pwd-req-spec" style="color: #ef4444; display: flex; align-items: center; gap: 4px; grid-column: span 2;"><span>✕</span> Special symbol (!@#$%^&*)</div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="form-group" id="auth-confirm-group" style="display: none;">
                     <label for="auth-confirm-password">Confirm Password</label>
                     <input type="password" id="auth-confirm-password" class="form-input" placeholder="Confirm password...">
+                </div>
+
+                <div id="auth-forgot-wrap" style="text-align: right; margin-top: -6px; margin-bottom: 10px;">
+                    <a href="#" id="auth-forgot-link" style="font-size: 0.78rem; color: #818cf8; text-decoration: none;">Forgot Password?</a>
                 </div>
 
                 <div id="auth-error-msg" class="form-error-msg"></div>
@@ -910,7 +988,26 @@
         </div>
     </div>
 
-    <!-- JavaScript Files -->
+    <!-- Supabase JS SDK (v2 CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/services/auth-service.js"></script>
+    <script src="js/services/profile-service.js"></script>
+    <script src="js/services/progress-service.js"></script>
+    <script src="js/services/stats-service.js"></script>
+    <script src="js/services/activity-service.js"></script>
+    <script src="js/services/challenge-service.js"></script>
+    <script src="js/services/contest-service.js"></script>
+    <script src="js/services/roadmap-service.js"></script>
+    <script src="js/services/migration-service.js"></script>
+    <script src="js/services/realtime-service.js"></script>
+    <script src="js/services/leaderboard-service.js"></script>
+    <script src="js/services/problem-service.js"></script>
+    <script src="js/services/settings-service.js"></script>
+    <script src="js/services/announcement-service.js"></script>
+    <script src="js/services/admin-service.js"></script>
+
+    <!-- Core Application JavaScript Files -->
     <script src="js/data.js"></script>
     <script src="js/basic-dsa-data.js"></script>
     <script src="js/storage.js"></script>
@@ -922,6 +1019,7 @@
     <script src="js/contest-ui.js"></script>
     <script src="js/potd.js"></script>
     <script src="js/daily-mission.js"></script>
+    <script src="js/leaderboard-ui.js"></script>
     <script src="js/ui.js"></script>
     <script src="js/roadmap.js"></script>
     <script src="js/app.js"></script>

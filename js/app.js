@@ -37,28 +37,37 @@ document.addEventListener("DOMContentLoaded", () => {
         DailyMissionManager.init();
     }
 
+    // 5c. Initialize Competitive Leaderboard
+    if (typeof LeaderboardUI !== "undefined") {
+        LeaderboardUI.init();
+    }
+
     // 6. Force default initial route to Challenges / Ctrl+Alt+Career Home Page
     UIManager.switchTab("challenges");
 
     console.log("Ctrl+Alt+Career initialized successfully with default view: CHALLENGES.");
 });
 
-// ── Dark theme scroll glass navbar ──────────────────────────────────────────
-// Toggles .navbar--glass on the navbar when scrollY > 20px, dark theme only.
-// Light theme is untouched. No inline style changes — CSS class only.
+// ── Scroll glass navbar ─────────────────────────────────────────────────────
+// Toggles .is-scrolled / .navbar--glass when scrollY > 5px in light/dark themes.
+// Only modifies DOM when threshold state actually changes.
 (function () {
     'use strict';
     var navbar = null;
     var ticking = false;
-    var THRESHOLD = 20;
+    var isScrolledState = null;
+    var THRESHOLD = 5;
 
     function updateGlass() {
         if (!navbar) return;
-        var isDark = !document.body.classList.contains('light-theme');
-        if (isDark && window.scrollY > THRESHOLD) {
-            navbar.classList.add('navbar--glass');
-        } else {
-            navbar.classList.remove('navbar--glass');
+        var shouldBeScrolled = window.scrollY > THRESHOLD;
+        if (shouldBeScrolled !== isScrolledState) {
+            isScrolledState = shouldBeScrolled;
+            if (shouldBeScrolled) {
+                navbar.classList.add('is-scrolled', 'navbar--glass');
+            } else {
+                navbar.classList.remove('is-scrolled', 'navbar--glass');
+            }
         }
         ticking = false;
     }
@@ -74,6 +83,7 @@ document.addEventListener("DOMContentLoaded", () => {
         navbar = document.querySelector('.navbar');
         if (navbar) {
             window.addEventListener('scroll', onScroll, { passive: true });
+            updateGlass();
         }
     });
 })();

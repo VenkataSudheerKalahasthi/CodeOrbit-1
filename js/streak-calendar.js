@@ -26,7 +26,9 @@ const StreakCalendar = {
         if (currentStreakVal) currentStreakVal.textContent = `${user ? user.currentStreak || 0 : 0} Days`;
         if (longestStreakVal) longestStreakVal.textContent = `${user ? user.longestStreak || 0 : 0} Days`;
 
-        const todayIso = new Date().toISOString().split("T")[0];
+        const todayIso = (typeof AnalyticsEngine !== "undefined" && AnalyticsEngine.getLocalDateKey)
+            ? AnalyticsEngine.getLocalDateKey(new Date())
+            : new Date().toISOString().split("T")[0];
         const monthShortNames = [
             "JAN", "FEB", "MAR", "APR",
             "MAY", "JUN", "JUL", "AUG",
@@ -85,16 +87,16 @@ const StreakCalendar = {
 
                 const activityText = count === 0
                     ? "No activity"
-                    : (count === 1 ? "1 problem completed" : `${count} problems completed`);
+                    : (count === 1 ? "1 problem solved" : `${count} problems solved`);
 
-                const tooltipText = `${dateFormatted} — ${activityText}`;
+                const ariaText = `${dateFormatted} — ${activityText}`;
 
                 html += `<div class="month-cell streak-cell level-${level}${todayClass}"
                              data-date="${dateKey}"
                              data-count="${count}"
-                             data-tooltip="${tooltipText}"
                              tabindex="0"
-                             aria-label="${tooltipText}"></div>`;
+                             role="button"
+                             aria-label="${ariaText}"></div>`;
             }
 
             // 3. Trailing empty cells to fill last row of grid
@@ -117,96 +119,60 @@ const StreakCalendar = {
 
         container.innerHTML = html;
 
-        this.bindTooltipEvents(container);
+        // Clean up any existing floating tooltip DOM element
+        const oldTooltip = document.getElementById("streak-global-tooltip");
+        if (oldTooltip) {
+            oldTooltip.remove();
+        }
     },
 
     getDailyProblemCount(user, dateStr) {
-        if (!user) return 0;
+        if (!user || !dateStr) return 0;
         let count = 0;
 
-        if (user.completionDates && user.completionDates[dateStr] !== undefined) {
+        if (user.completionDates && typeof user.completionDates[dateStr] !== "undefined") {
             const val = user.completionDates[dateStr];
             if (typeof val === "number") {
-                count = val;
+                count = Math.max(0, val);
             } else if (val) {
                 count = 1;
             }
         }
 
-        if (user.activity && Array.isArray(user.activity)) {
-            const actCount = user.activity.filter(a => {
-                return (a.type === "PROBLEM_COMPLETED" || a.type === "PROBLEM_SOLVED") && 
-                        a.timestamp && 
-                        a.timestamp.split("T")[0] === dateStr;
-            }).length;
-            count = Math.max(count, actCount);
+        // If completionDates is 0 or missing, check deduplicated activity records
+        if (count === 0 && user.activity && Array.isArray(user.activity)) {
+            const solvedIds = new Set();
+            user.activity.forEach(a => {
+                if ((a.type === "PROBLEM_COMPLETED" || a.type === "PROBLEM_SOLVED") && a.timestamp) {
+                    const localKey = (typeof AnalyticsEngine !== "undefined" && AnalyticsEngine.getLocalDateKey)
+                        ? AnalyticsEngine.getLocalDateKey(a.timestamp)
+                        : a.timestamp.split("T")[0];
+                    if (localKey === dateStr) {
+                        const pid = a.problemId || a.id || a.description;
+                        if (pid) solvedIds.add(pid);
+                    }
+                }
+            });
+            if (solvedIds.size > 0) {
+                count = solvedIds.size;
+            }
         }
 
         return count;
     },
 
+    /**
+     * 3-Tier Activity Classification:
+     * 0: Inactive / Empty
+     * 1: Low Activity (#DCFCE7)
+     * 2: Medium Activity (#4ADE80)
+     * 3: High Activity (#16A34A)
+     */
     getStreakLevel(count) {
         if (count <= 0) return 0;
-        if (count === 1) return 1;
-        if (count <= 3) return 2;
-        if (count <= 5) return 3;
-        return 4;
-    },
-
-    bindTooltipEvents(container) {
-        let tooltipEl = document.getElementById("streak-global-tooltip");
-        if (!tooltipEl) {
-            tooltipEl = document.createElement("div");
-            tooltipEl.id = "streak-global-tooltip";
-            tooltipEl.className = "streak-tooltip";
-            document.body.appendChild(tooltipEl);
-        }
-
-        container.querySelectorAll(".month-cell[data-tooltip]").forEach(cell => {
-            cell.addEventListener("mouseenter", (e) => {
-                tooltipEl.textContent = cell.getAttribute("data-tooltip");
-                tooltipEl.classList.add("visible");
-                this.positionTooltip(e, tooltipEl);
-            });
-
-            cell.addEventListener("mousemove", (e) => {
-                this.positionTooltip(e, tooltipEl);
-            });
-
-            cell.addEventListener("mouseleave", () => {
-                tooltipEl.classList.remove("visible");
-            });
-
-            cell.addEventListener("focus", (e) => {
-                tooltipEl.textContent = cell.getAttribute("data-tooltip");
-                tooltipEl.classList.add("visible");
-                this.positionTooltip(e, tooltipEl);
-            });
-
-            cell.addEventListener("blur", () => {
-                tooltipEl.classList.remove("visible");
-            });
-        });
-    },
-
-    positionTooltip(e, tooltipEl) {
-        const rect = e.target.getBoundingClientRect();
-        const tooltipRect = tooltipEl.getBoundingClientRect();
-        
-        let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
-        let top = rect.top - tooltipRect.height - 8;
-
-        if (left < 10) left = 10;
-        if (left + tooltipRect.width > window.innerWidth - 10) {
-            left = window.innerWidth - tooltipRect.width - 10;
-        }
-
-        if (top < 10) {
-            top = rect.bottom + 8;
-        }
-
-        tooltipEl.style.left = `${left}px`;
-        tooltipEl.style.top = `${top}px`;
+        if (count <= 2) return 1;
+        if (count <= 5) return 2;
+        return 3;
     }
 };
 

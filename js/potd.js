@@ -1,7 +1,7 @@
 /**
- * Problem of the Day (POTD) Module for Ctrl+Alt+Career
+ * Problem of the Day (POTD) Module for Ctrl+Alt+Career & CodeOrbit
  * Dynamic date generation, platform modal controller, URL validation,
- * and per-user completion state management in LocalStorage.
+ * per-user completion state management, and Supabase cloud synchronization.
  */
 
 const POTDManager = {
@@ -32,7 +32,6 @@ const POTDManager = {
 
     getTodayDateString() {
         const now = new Date();
-        // YYYY-MM-DD format for storage keys
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
         const day = String(now.getDate()).padStart(2, '0');
@@ -58,7 +57,7 @@ const POTDManager = {
     getCurrentUserId() {
         if (typeof StorageManager !== "undefined" && StorageManager.getCurrentUser) {
             const user = StorageManager.getCurrentUser();
-            return user ? user.username : "guest";
+            return user ? user.id : "guest";
         }
         return "guest";
     },
@@ -97,11 +96,23 @@ const POTDManager = {
         if (!all[userId][dateStr]) all[userId][dateStr] = {};
 
         const currentState = Boolean(all[userId][dateStr][platform]);
-        all[userId][dateStr][platform] = !currentState;
+        const newState = !currentState;
+        all[userId][dateStr][platform] = newState;
 
         this.saveAllProgress(all);
         this.updateCardCompletionState();
-        return !currentState;
+
+        // Cloud sync if authenticated
+        const currentUser = (typeof StorageManager !== "undefined" && StorageManager.getCurrentUser) ? StorageManager.getCurrentUser() : null;
+        if (currentUser?.id && window.ChallengeService) {
+            const challengeType = platform === 'leetcode' ? 'potd_leetcode' : 'potd_gfg';
+            const problemId = `${challengeType}_${dateStr}`;
+            ChallengeService.setChallengeCompletion(currentUser.id, dateStr, problemId, challengeType, newState, 0).catch(err => {
+                console.warn("POTD cloud sync error:", err);
+            });
+        }
+
+        return newState;
     },
 
     updateCardCompletionState() {

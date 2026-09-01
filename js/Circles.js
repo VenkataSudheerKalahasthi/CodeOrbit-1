@@ -222,7 +222,7 @@
             </svg>
 
             <!-- Central Core Orb — expands to full ticker pill on hover in light theme -->
-            <div class="circles-center-core" title="Ctrl+Alt+Career Core" aria-label="Ctrl+Alt+Career Core">
+            <div class="circles-center-core" title="CodeOrbit Core" aria-label="CodeOrbit Core">
                 <!-- Left ticker — revealed on hover (light theme only) -->
                 <div class="orbit-hover-left" aria-hidden="true">
                     <span class="ohv-word">TREES</span><span class="ohv-dot">•</span><span class="ohv-word">GRAPHS</span><span class="ohv-dot">•</span><span class="ohv-word">DP</span><span class="ohv-dot">•</span><span class="ohv-word ohv-highlight">GREEDY</span>
@@ -230,7 +230,7 @@
                 <!-- Center icon group — always visible -->
                 <div class="circles-core-icon-group">
                     <span class="circles-core-logo">&lt;/&gt;</span>
-                    <span class="circles-core-text">Ctrl+Alt</span>
+                    <span class="circles-core-text">CodeOrbit</span>
                 </div>
                 <!-- Right ticker — revealed on hover (light theme only) -->
                 <div class="orbit-hover-right" aria-hidden="true">

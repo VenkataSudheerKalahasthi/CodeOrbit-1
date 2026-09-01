@@ -3,59 +3,72 @@
  */
 
 const AnalyticsEngine = {
-    // Check if two ISO date strings belong to the same calendar day (YYYY-MM-DD)
-    isSameDay(d1, d2) {
-        if (!d1 || !d2) return false;
-        const date1 = new Date(d1);
-        const date2 = new Date(d2);
-        return date1.getFullYear() === date2.getFullYear() &&
-               date1.getMonth() === date2.getMonth() &&
-               date1.getDate() === date2.getDate();
+    // Return local calendar date string (YYYY-MM-DD) avoiding UTC timezone shift
+    getLocalDateKey(dateInput) {
+        if (!dateInput) return null;
+        const d = new Date(dateInput);
+        if (isNaN(d.getTime())) return null;
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     },
 
-    // Check if d2 is yesterday relative to d1
+    // Check if two ISO date strings belong to the same local calendar day (YYYY-MM-DD)
+    isSameDay(d1, d2) {
+        if (!d1 || !d2) return false;
+        return this.getLocalDateKey(d1) === this.getLocalDateKey(d2);
+    },
+
+    // Check if d2 is yesterday relative to d1 in user's local calendar
     isYesterday(todayDate, testDate) {
+        if (!todayDate || !testDate) return false;
         const t = new Date(todayDate);
         t.setDate(t.getDate() - 1);
-        return this.isSameDay(t.toISOString(), testDate);
+        return this.getLocalDateKey(t) === this.getLocalDateKey(testDate);
     },
 
     // Update practice streak when a problem is completed
     updateStreakOnCompletion(user) {
-        const nowIso = new Date().toISOString();
-        const todayStr = nowIso.split("T")[0];
+        const now = new Date();
+        const todayStr = this.getLocalDateKey(now);
 
         if (!user.completionDates) user.completionDates = {};
         if (!user.lastActiveDate) {
             user.currentStreak = 1;
             user.longestStreak = 1;
-            user.lastActiveDate = nowIso;
+            user.lastActiveDate = now.toISOString();
         } else {
-            const lastStr = user.lastActiveDate.split("T")[0];
+            const lastStr = this.getLocalDateKey(user.lastActiveDate);
             if (todayStr === lastStr) {
                 // Same day completion — streak remains unchanged
-            } else if (this.isYesterday(nowIso, user.lastActiveDate)) {
+            } else if (this.isYesterday(now, user.lastActiveDate)) {
                 // Consecutive day!
                 user.currentStreak += 1;
                 if (user.currentStreak > user.longestStreak) {
                     user.longestStreak = user.currentStreak;
                 }
-                user.lastActiveDate = nowIso;
+                user.lastActiveDate = now.toISOString();
             } else {
                 // Missed one or more days — reset current streak to 1
                 user.currentStreak = 1;
-                user.lastActiveDate = nowIso;
+                user.lastActiveDate = now.toISOString();
             }
         }
         return user;
     },
 
-    // Calculate progress stats
+    // Calculate progress stats — authoritative unique completed & derived remaining
     calculateStats(user, problems) {
         const problemList = Array.isArray(problems) ? problems : [];
         const total = problemList.length;
-        const completedSet = new Set(user ? user.completedProblems || [] : []);
-        const completed = problemList.filter(p => completedSet.has(p.id)).length;
+
+        // Deduplicated normalized Set of unique completed problem IDs
+        const completedRaw = user ? (user.completedProblems || []) : [];
+        const completedSet = new Set(completedRaw.map(id => String(id).trim()));
+
+        // Count how many unique problems in this problemList have been completed
+        const completed = problemList.filter(p => completedSet.has(String(p.id).trim())).length;
         const remaining = Math.max(0, total - completed);
         const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 
@@ -70,14 +83,17 @@ const AnalyticsEngine = {
             Hard: { total: 0, completed: 0 }
         };
 
-        problems.forEach(p => {
+        problemList.forEach(p => {
+            const pIdStr = String(p.id).trim();
+            const isDone = completedSet.has(pIdStr);
+
             // Topic
             const t = p.topic || "General";
             if (!topicStats[t]) {
                 topicStats[t] = { total: 0, completed: 0, subtopics: {} };
             }
             topicStats[t].total += 1;
-            if (completedSet.has(p.id)) {
+            if (isDone) {
                 topicStats[t].completed += 1;
             }
 
@@ -87,7 +103,7 @@ const AnalyticsEngine = {
                 platformStats[pl] = { total: 0, completed: 0 };
             }
             platformStats[pl].total += 1;
-            if (completedSet.has(p.id)) {
+            if (isDone) {
                 platformStats[pl].completed += 1;
             }
 
@@ -97,7 +113,7 @@ const AnalyticsEngine = {
                 difficultyStats[diff] = { total: 0, completed: 0 };
             }
             difficultyStats[diff].total += 1;
-            if (completedSet.has(p.id)) {
+            if (isDone) {
                 difficultyStats[diff].completed += 1;
             }
         });
@@ -131,11 +147,12 @@ const AnalyticsEngine = {
         };
     },
 
-    logActivity(user, type, description) {
+    logActivity(user, type, description, problemId = null) {
         if (!user.activity) user.activity = [];
         user.activity.unshift({
             type,
             description,
+            problemId: problemId !== null ? String(problemId) : null,
             timestamp: new Date().toISOString()
         });
         // Limit activity log to latest 50 entries
