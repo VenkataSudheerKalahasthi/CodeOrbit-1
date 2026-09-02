@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeOrbit — Platform Administration Control Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+    <div id="cosmic-bg" aria-hidden="true"></div>
+
+    <div class="admin-layout">
+        <!-- Auth Gate Loading Screen -->
+        <div id="admin-gate-loading" style="text-align: center; padding: 100px 0;">
+            <div style="font-size: 1.2rem; font-weight: 600; color: var(--text-muted);">
+                Verifying administrative authorization...
+            </div>
+        </div>
+
+        <!-- Access Denied Screen (Strict RLS / Role Protection) -->
+        <div id="admin-gate-denied" class="denied-screen" style="display: none;">
+            <div class="denied-icon">🔒</div>
+            <h1 style="font-size: 1.8rem; font-weight: 800;">403 — Unauthorized Access</h1>
+            <p id="admin-denied-reason" style="color: var(--text-muted); max-width: 460px; line-height: 1.5;">
+                You do not have administrative privileges to access this control center. This portal is strictly restricted to the platform administrator.
+            </p>
+            <div id="admin-denied-account" style="font-size: 0.85rem; color: #fca5a5; background: rgba(239,68,68,0.1); padding: 8px 16px; border-radius: 6px; border: 1px solid rgba(239,68,68,0.25); display: none;"></div>
+            <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; justify-content: center;">
+                <a href="index.html" class="btn-primary" style="text-decoration: none;">
+                    ← Return to Admin Sign In
+                </a>
+            </div>
+        </div>
+
+        <!-- Authorized Admin Content -->
+        <div id="admin-content" style="display: none;">
+            <header class="admin-header">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                        <a href="index.html" style="color: var(--text-muted); text-decoration: none; font-size: 0.85rem; font-weight: 600;">
+                            ← Admin Portal
+                        </a>
+                        <span class="admin-badge">🛡️ Platform Admin</span>
+                    </div>
+                    <h1 style="font-size: 1.75rem; font-weight: 800;">CodeOrbit Control Center</h1>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span id="admin-user-display" style="font-size: 0.85rem; color: var(--text-muted);"></span>
+                    <button class="btn-secondary" id="admin-logout-btn" style="padding: 8px 16px; font-size: 0.85rem;">Log Out</button>
+                </div>
+            </header>
+
+            <!-- Admin Navigation Tabs -->
+            <div class="admin-nav-tabs">
+                <button class="admin-nav-tab active" onclick="AdminController.switchTab('overview')">📊 Overview</button>
+                <button class="admin-nav-tab" onclick="AdminController.switchTab('content')">📚 Content Control</button>
+                <button class="admin-nav-tab" onclick="AdminController.switchTab('users')">👥 User Control</button>
+                <button class="admin-nav-tab" onclick="AdminController.switchTab('competition')">🏆 Competition Control</button>
+                <button class="admin-nav-tab" onclick="AdminController.switchTab('analytics')">📈 Platform Analytics</button>
+                <button class="admin-nav-tab" onclick="AdminController.switchTab('settings')">⚙️ Platform Settings</button>
+            </div>
+
+            <!-- Panel 1: Overview & KPIs -->
+            <div id="admin-panel-overview" class="admin-panel active">
+                <div class="admin-kpi-grid">
+                    <div class="admin-kpi-card">
+                        <span class="admin-kpi-label">Total Users</span>
+                        <span class="admin-kpi-value" id="kpi-total-users">0</span>
+                        <span class="admin-kpi-sub" id="kpi-users-today">+0 today</span>
+                    </div>
+                    <div class="admin-kpi-card">
+                        <span class="admin-kpi-label">Active Users (7d)</span>
+                        <span class="admin-kpi-value" id="kpi-active-users">0</span>
+                        <span class="admin-kpi-sub">Active learners</span>
+                    </div>
+                    <div class="admin-kpi-card">
+                        <span class="admin-kpi-label">Problems Completed</span>
+                        <span class="admin-kpi-value" id="kpi-total-solved">0</span>
+                        <span class="admin-kpi-sub">Across platform</span>
+                    </div>
+                    <div class="admin-kpi-card">
+                        <span class="admin-kpi-label">Stars Awarded</span>
+                        <span class="admin-kpi-value" id="kpi-total-stars">0</span>
+                        <span class="admin-kpi-sub">Practice rewards ⭐</span>
+                    </div>
+                    <div class="admin-kpi-card">
+                        <span class="admin-kpi-label">Contest Registrations</span>
+                        <span class="admin-kpi-value" id="kpi-contest-regs">0</span>
+                        <span class="admin-kpi-sub">Contest activity</span>
+                    </div>
+                </div>
+
+                <div class="admin-section">
+                    <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 8px;">Platform Status & Architecture</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 16px;">
+                        All core systems (Supabase Database, PostgreSQL Triggers, Single-Admin Authorization, Realtime Sync, Automatic Daily 3-Problem Engine) are operational with zero throttling.
+                    </p>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        <button class="btn-inspect" onclick="AdminController.switchTab('content'); AdminController.switchContentSubtab('problems');">Manage Problems 📝</button>
+                        <button class="btn-inspect" onclick="AdminController.switchTab('content'); AdminController.switchContentSubtab('announcements');">Create Announcement 📢</button>
+                        <button class="btn-inspect" onclick="AdminController.switchTab('users');">Manage Users 👥</button>
+                        <button class="btn-inspect" onclick="AdminController.switchTab('settings');">Platform Rules ⚙️</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel 2: Content Control -->
+            <div id="admin-panel-content" class="admin-panel">
+                <div class="admin-subnav-tabs">
+                    <button class="admin-subnav-tab active" onclick="AdminController.switchContentSubtab('problems')">📝 Problems</button>
+                    <button class="admin-subnav-tab" onclick="AdminController.switchContentSubtab('topics')">📑 Topics / Sections</button>
+                    <button class="admin-subnav-tab" onclick="AdminController.switchContentSubtab('roadmap')">🗺️ Roadmap Content</button>
+                    <button class="admin-subnav-tab" onclick="AdminController.switchContentSubtab('daily')">⚡ Daily Problems</button>
+                    <button class="admin-subnav-tab" onclick="AdminController.switchContentSubtab('contests')">🏆 Contests</button>
+                    <button class="admin-subnav-tab" onclick="AdminController.switchContentSubtab('announcements')">📢 Announcements</button>
+                </div>
+
+                <!-- Subpanel 2A: Problems Management -->
+                <div id="content-subpanel-problems" class="admin-content-subpanel active">
+                    <div class="admin-kpi-grid">
+                        <div class="admin-kpi-card">
+                            <span class="admin-kpi-label">Total Problems</span>
+                            <span class="admin-kpi-value" id="kpi-prob-total">0</span>
+                            <span class="admin-kpi-sub">Database repository</span>
+                        </div>
+                        <div class="admin-kpi-card">
+                            <span class="admin-kpi-label">Published</span>
+                            <span class="admin-kpi-value" id="kpi-prob-published" style="color: #4ade80;">0</span>
+                            <span class="admin-kpi-sub">Live on CodeOrbit</span>
+                        </div>
+                        <div class="admin-kpi-card">
+                            <span class="admin-kpi-label">Drafts</span>
+                            <span class="admin-kpi-value" id="kpi-prob-draft" style="color: #fbbf24;">0</span>
+                            <span class="admin-kpi-sub">Hidden from students</span>
+                        </div>
+                        <div class="admin-kpi-card">
+                            <span class="admin-kpi-label">Archived</span>
+                            <span class="admin-kpi-value" id="kpi-prob-archived" style="color: #94a3b8;">0</span>
+                            <span class="admin-kpi-sub">Progress preserved</span>
+                        </div>
+                        <div class="admin-kpi-card">
+                            <span class="admin-kpi-label">Difficulty Split</span>
+                            <span class="admin-kpi-value" id="kpi-prob-diff-breakdown" style="font-size: 1rem; margin-top: 6px;">🟢 0 · 🟡 0 · 🔴 0</span>
+                            <span class="admin-kpi-sub">Easy / Med / Hard</span>
+                        </div>
+                    </div>
+
+                    <div class="admin-section">
+                        <div class="admin-section-header" style="flex-wrap: wrap; gap: 16px;">
+                            <div>
+                                <h2 style="font-size: 1.25rem; font-weight: 700;">DSA Problem Catalog Management</h2>
+                                <p style="font-size: 0.8rem; color: var(--text-muted);">Database-driven problem management with dynamic taxonomy categorization and lifecycle control.</p>
+                            </div>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button id="btn-sync-master-problems" class="btn-inspect" style="padding: 10px 16px; background: rgba(99,102,241,0.15); color: #818cf8; border-color: rgba(99,102,241,0.3);" title="Sync canonical 375 problems to Supabase">🔄 Sync 375 to Cloud</button>
+                                <button id="btn-open-add-problem" class="btn-primary" style="padding: 10px 20px; font-weight: 700;">+ Add New Problem</button>
+                            </div>
+                        </div>
+
+                        <!-- Filters -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; background: rgba(0,0,0,0.2); padding: 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                            <div>
+                                <label style="display: block; font-size: 0.72rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px; text-transform: uppercase;">Search Catalog</label>
+                                <input type="text" id="admin-problem-search" class="admin-search-input" placeholder="Search title, URL, ID, topic..." style="width: 100%; height: 38px;">
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.72rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px; text-transform: uppercase;">Difficulty</label>
+                                <select id="admin-filter-difficulty" class="admin-search-input" style="width: 100%; height: 38px; cursor: pointer;">
+                                    <option value="All">All Difficulties</option>
+                                    <option value="Easy">Easy</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="Hard">Hard</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.72rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px; text-transform: uppercase;">Platform</label>
+                                <select id="admin-filter-platform" class="admin-search-input" style="width: 100%; height: 38px; cursor: pointer;">
+                                    <option value="All">All Platforms</option>
+                                    <option value="LeetCode">LeetCode</option>
+                                    <option value="GeeksforGeeks">GeeksforGeeks</option>
+                                    <option value="CodeChef">CodeChef</option>
+                                    <option value="CodeForces">CodeForces</option>
+                                    <option value="AtCoder">AtCoder</option>
+                                    <option value="HackerRank">HackerRank</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.72rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px; text-transform: uppercase;">Status</label>
+                                <select id="admin-filter-status" class="admin-search-input" style="width: 100%; height: 38px; cursor: pointer;">
+                                    <option value="All">All Statuses</option>
+                                    <option value="published">🟢 Published</option>
+                                    <option value="draft">🟡 Draft</option>
+                                    <option value="archived">⚪ Archived</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.72rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px; text-transform: uppercase;">Section / Topic</label>
+                                <select id="admin-filter-topic" class="admin-search-input" style="width: 100%; height: 38px; cursor: pointer;">
+                                    <option value="All">All Sections / Topics</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.72rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px; text-transform: uppercase;">Sort Order</label>
+                                <select id="admin-filter-sort" class="admin-search-input" style="width: 100%; height: 38px; cursor: pointer;">
+                                    <option value="problem_order">Numerical Order</option>
+                                    <option value="title">Title (A-Z)</option>
+                                    <option value="difficulty">Difficulty</option>
+                                    <option value="created_at">Date Added</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Problems Table -->
+                        <div class="admin-table-wrap">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 60px;">ID</th>
+                                        <th>Title & URL</th>
+                                        <th>Platform</th>
+                                        <th>Difficulty</th>
+                                        <th>Taxonomy (Section / Card)</th>
+                                        <th style="text-align: center; width: 60px;">Order</th>
+                                        <th>Status</th>
+                                        <th style="width: 220px;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-problems-table-body">
+                                    <tr>
+                                        <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 32px;">Loading problem catalog...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div id="admin-problems-pagination" style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding: 12px 16px; background: rgba(0,0,0,0.15); border-radius: 8px;">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subpanel 2B: Topics / Sections -->
+                <div id="content-subpanel-topics" class="admin-content-subpanel">
+                    <div class="admin-section">
+                        <div class="admin-section-header">
+                            <div>
+                                <h2 style="font-size: 1.25rem; font-weight: 700;">CodeOrbit Curriculum Hierarchy</h2>
+                                <p style="font-size: 0.8rem; color: var(--text-muted);">Explore the canonical structure of topics and cards mapped to problems.</p>
+                            </div>
+                        </div>
+                        <div id="topics-hierarchy-container" style="display: flex; flex-direction: column; gap: 16px;"></div>
+                    </div>
+                </div>
+
+                <!-- Subpanel 2C: Roadmap -->
+                <div id="content-subpanel-roadmap" class="admin-content-subpanel">
+                    <div class="admin-section">
+                        <div class="admin-section-header">
+                            <div>
+                                <h2 style="font-size: 1.25rem; font-weight: 700;">Visual Roadmap Curriculum Overview</h2>
+                                <p style="font-size: 0.8rem; color: var(--text-muted);">Inspect the 18 outward-branching visual roadmap phases and concept nodes.</p>
+                            </div>
+                        </div>
+                        <div id="roadmap-phases-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px;"></div>
+                    </div>
+                </div>
+
+                <!-- Subpanel 2D: Daily Problems -->
+                <div id="content-subpanel-daily" class="admin-content-subpanel">
+                    <div class="admin-section">
+                        <div class="admin-section-header">
+                            <div>
+                                <h2 style="font-size: 1.25rem; font-weight: 700;">Automatic Daily Problems Configuration</h2>
+                                <p style="font-size: 0.8rem; color: var(--text-muted);">The deterministic date-seeded daily problem generator runs automatically every day.</p>
+                            </div>
+                        </div>
+
+                        <div class="setting-card">
+                            <div class="setting-info">
+                                <div class="setting-title">Daily Problem Count</div>
+                                <div class="setting-desc">Number of problems generated each morning (Default: 3 = 1 Easy + 1 Medium + 1 Hard).</div>
+                            </div>
+                            <div class="setting-control">
+                                <input type="number" id="daily-count-input" class="admin-search-input" style="width: 90px; text-align: center;" min="1" max="10" value="3">
+                                <button class="btn-primary" onclick="AdminController.saveDailyCountSetting()" style="padding: 9px 18px;">Save Count</button>
+                            </div>
+                        </div>
+
+                        <div class="detail-card" style="margin-top: 20px;">
+                            <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 10px;">Today's Generated Daily Mission</h4>
+                            <div id="today-daily-preview-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subpanel 2E: Contests -->
+                <div id="content-subpanel-contests" class="admin-content-subpanel">
+                    <div class="admin-section">
+                        <div class="admin-section-header">
+                            <div>
+                                <h2 style="font-size: 1.25rem; font-weight: 700;">Multi-Platform Contests Management</h2>
+                                <p style="font-size: 0.8rem; color: var(--text-muted);">Manage upcoming, live, and concluded contests across LeetCode, CodeForces, CodeChef, and AtCoder.</p>
+                            </div>
+                            <button class="btn-primary" onclick="AdminController.openAddContestModal()">+ Add Contest</button>
+                        </div>
+
+                        <div class="admin-table-wrap">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Contest Title</th>
+                                        <th>Platform</th>
+                                        <th>Schedule (Start / End)</th>
+                                        <th>Level</th>
+                                        <th>Status</th>
+                                        <th style="width: 160px;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-contests-table-body">
+                                    <tr>
+                                        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Loading contests...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subpanel 2F: Announcements -->
+                <div id="content-subpanel-announcements" class="admin-content-subpanel">
+                    <div class="admin-section">
+                        <div class="admin-section-header">
+                            <div>
+                                <h2 style="font-size: 1.25rem; font-weight: 700;">Live Platform Announcements & Banners</h2>
+                                <p style="font-size: 0.8rem; color: var(--text-muted);">Published announcements appear dynamically on the main CodeOrbit website. Unpublishing instantly removes them.</p>
+                            </div>
+                            <button class="btn-primary" onclick="AdminController.openAddAnnouncementModal()">+ Create Announcement</button>
+                        </div>
+
+                        <div class="admin-table-wrap">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Title & Message</th>
+                                        <th>Category</th>
+                                        <th>Link Target</th>
+                                        <th>Active Window</th>
+                                        <th>Status</th>
+                                        <th style="width: 180px;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-announcements-table-body">
+                                    <tr>
+                                        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Loading announcements...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel 3: User Control -->
+            <div id="admin-panel-users" class="admin-panel">
+                <div class="admin-section">
+                    <div class="admin-section-header">
+                        <div>
+                            <h2 style="font-size: 1.25rem; font-weight: 700;">Learner Management & Telemetry</h2>
+                            <p style="font-size: 0.8rem; color: var(--text-muted);">Search, filter, inspect progression, and manage learner account status with zero data loss.</p>
+                        </div>
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                            <select id="admin-user-status-filter" class="admin-search-input" style="width: 150px; height: 38px; cursor: pointer;">
+                                <option value="All">All Statuses</option>
+                                <option value="active">🟢 Active</option>
+                                <option value="suspended">🔴 Suspended</option>
+                            </select>
+                            <input type="text" id="admin-user-search" class="admin-search-input" placeholder="Search by username, email, or UUID...">
+                        </div>
+                    </div>
+
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Email</th>
+                                    <th>Joined</th>
+                                    <th>Last Active</th>
+                                    <th>Solved</th>
+                                    <th>Stars</th>
+                                    <th>Streak</th>
+                                    <th>Status</th>
+                                    <th style="width: 180px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-users-table-body">
+                                <tr>
+                                    <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 24px;">Loading users...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel 4: Competition Control -->
+            <div id="admin-panel-competition" class="admin-panel">
+                <div class="admin-kpi-grid">
+                    <div class="admin-kpi-card">
+                        <span class="admin-kpi-label">Ranked Competitors</span>
+                        <span class="admin-kpi-value" id="kpi-lb-total-users">0</span>
+                        <span class="admin-kpi-sub">Total database participants</span>
+                    </div>
+                    <div class="admin-kpi-card">
+                        <span class="admin-kpi-label">Active Competitors</span>
+                        <span class="admin-kpi-value" id="kpi-lb-active-users">0</span>
+                        <span class="admin-kpi-sub">With active points/stars</span>
+                    </div>
+                    <div class="admin-kpi-card">
+                        <span class="admin-kpi-label">Avg Competitive Score</span>
+                        <span class="admin-kpi-value" id="kpi-lb-avg-score">0</span>
+                        <span class="admin-kpi-sub">Deterministic formula pts</span>
+                    </div>
+                    <div class="admin-kpi-card">
+                        <span class="admin-kpi-label">Total Practice Stars</span>
+                        <span class="admin-kpi-value" id="kpi-lb-total-stars">0</span>
+                        <span class="admin-kpi-sub">Verified ⭐ rewards</span>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                    <div class="detail-card">
+                        <div class="detail-card-label" style="color: #ef4444;">🥇 Top Competitive Score</div>
+                        <div id="top-performer-score" style="margin-top: 8px; font-size: 0.9rem;">Loading...</div>
+                    </div>
+                    <div class="detail-card">
+                        <div class="detail-card-label" style="color: #fbbf24;">⭐ Top Stars Collected</div>
+                        <div id="top-performer-stars" style="margin-top: 8px; font-size: 0.9rem;">Loading...</div>
+                    </div>
+                    <div class="detail-card">
+                        <div class="detail-card-label" style="color: #f97316;">🔥 Longest Active Streaks</div>
+                        <div id="top-performer-streaks" style="margin-top: 8px; font-size: 0.9rem;">Loading...</div>
+                    </div>
+                    <div class="detail-card">
+                        <div class="detail-card-label" style="color: #38bdf8;">✓ Most Problems Solved</div>
+                        <div id="top-performer-solved" style="margin-top: 8px; font-size: 0.9rem;">Loading...</div>
+                    </div>
+                </div>
+
+                <div class="admin-section">
+                    <div class="admin-section-header">
+                        <div>
+                            <h2 style="font-size: 1.25rem; font-weight: 700;">Real-Time Competitive Standings</h2>
+                            <p style="font-size: 0.8rem; color: var(--text-muted);">Real-time standings derived from authoritative Supabase user records.</p>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn-inspect" onclick="AdminController.loadCompetitiveStandings('all-time')">All-Time</button>
+                            <button class="btn-inspect" onclick="AdminController.loadCompetitiveStandings('weekly')">Weekly</button>
+                            <button class="btn-inspect" onclick="AdminController.loadCompetitiveStandings('monthly')">Monthly</button>
+                            <button class="btn-inspect" onclick="AdminController.loadCompetitiveStandings(AdminController.currentLbTimeframe || 'all-time')">🔄 Refresh</button>
+                        </div>
+                    </div>
+
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Contestant</th>
+                                    <th>Competitive Score</th>
+                                    <th>Stars</th>
+                                    <th>Streak</th>
+                                    <th>Problems Solved</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-lb-table-body">
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Loading competitive analytics...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel 5: Platform Analytics -->
+            <div id="admin-panel-analytics" class="admin-panel">
+                <div class="admin-section">
+                    <div class="admin-section-header">
+                        <div>
+                            <h2 style="font-size: 1.25rem; font-weight: 700;">Platform-Wide Analytics & Metrics</h2>
+                            <p style="font-size: 0.8rem; color: var(--text-muted);">100% database-calculated metrics from real user activity, completions, and progress.</p>
+                        </div>
+                        <button class="btn-inspect" onclick="AdminController.loadDeepAnalytics()">🔄 Refresh Metrics</button>
+                    </div>
+
+                    <div class="detail-grid" style="margin-bottom: 24px;">
+                        <div class="detail-card">
+                            <div class="detail-card-label">Total Users</div>
+                            <div class="detail-card-val" id="analytics-total-users">0</div>
+                        </div>
+                        <div class="detail-card">
+                            <div class="detail-card-label">Today's Signups</div>
+                            <div class="detail-card-val" id="analytics-today-users" style="color: #4ade80;">0</div>
+                        </div>
+                        <div class="detail-card">
+                            <div class="detail-card-label">Active Learners (7d)</div>
+                            <div class="detail-card-val" id="analytics-active-users" style="color: #818cf8;">0</div>
+                        </div>
+                        <div class="detail-card">
+                            <div class="detail-card-label">Catalog Problems</div>
+                            <div class="detail-card-val" id="analytics-total-probs">372</div>
+                        </div>
+                        <div class="detail-card">
+                            <div class="detail-card-label">Total Solves</div>
+                            <div class="detail-card-val" id="analytics-total-solves" style="color: #38bdf8;">0</div>
+                        </div>
+                        <div class="detail-card">
+                            <div class="detail-card-label">Total Stars</div>
+                            <div class="detail-card-val" id="analytics-total-stars" style="color: #fbbf24;">0</div>
+                        </div>
+                        <div class="detail-card">
+                            <div class="detail-card-label">Active Streaks</div>
+                            <div class="detail-card-val" id="analytics-active-streaks" style="color: #f97316;">0</div>
+                        </div>
+                        <div class="detail-card">
+                            <div class="detail-card-label">Avg Solves / User</div>
+                            <div class="detail-card-val" id="analytics-avg-solves">0</div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 24px;">
+                        <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 12px;">Most Popular Topics by Student Completions</h3>
+                        <div class="admin-table-wrap">
+                            <table class="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Rank</th>
+                                        <th>Topic Name</th>
+                                        <th>Verified Completions</th>
+                                        <th>Popularity Share</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-popular-topics-body">
+                                    <tr>
+                                        <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">Computing real topic completion statistics...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel 6: Platform Settings -->
+            <div id="admin-panel-settings" class="admin-panel">
+                <div class="admin-section">
+                    <div class="admin-section-header">
+                        <div>
+                            <h2 style="font-size: 1.25rem; font-weight: 700;">Platform Configuration & Operational Rules</h2>
+                            <p style="font-size: 0.8rem; color: var(--text-muted);">Modify platform-wide rules without modifying frontend code.</p>
+                        </div>
+                        <button class="btn-inspect" onclick="AdminController.loadSettingsView()">🔄 Reload Settings</button>
+                    </div>
+
+                    <div class="setting-card">
+                        <div class="setting-info">
+                            <div class="setting-title">Daily Problems Count</div>
+                            <div class="setting-desc">Number of problems automatically assigned to each user daily. (Default: 3)</div>
+                        </div>
+                        <div class="setting-control">
+                            <input type="number" id="setting-daily-count" class="admin-search-input" style="width: 90px; text-align: center;" min="1" max="10" value="3">
+                            <button class="btn-primary" onclick="AdminController.confirmSaveSetting('daily_problems_count', { count: parseInt(document.getElementById('setting-daily-count').value, 10) })">Save</button>
+                        </div>
+                    </div>
+
+                    <div class="setting-card">
+                        <div class="setting-info">
+                            <div class="setting-title">Practice Star Reward Rule</div>
+                            <div class="setting-desc">Stars awarded per problem solve and daily challenge completion.</div>
+                        </div>
+                        <div class="setting-control">
+                            <input type="number" id="setting-star-reward" class="admin-search-input" style="width: 90px; text-align: center;" min="1" max="10" value="1">
+                            <button class="btn-primary" onclick="AdminController.confirmSaveSetting('star_rules', { daily_problem_stars: parseInt(document.getElementById('setting-star-reward').value, 10), daily_mission_bonus: 1 })">Save</button>
+                        </div>
+                    </div>
+
+                    <div class="setting-card">
+                        <div class="setting-info">
+                            <div class="setting-title">Competitive Score Weights</div>
+                            <div class="setting-desc">Point multiplier formula for leaderboard: Stars (10x), Streak (15x), Solved (5x), Active Days (20x).</div>
+                        </div>
+                        <div class="setting-control">
+                            <button class="btn-inspect" onclick="AdminController.openScoringWeightsModal()">Configure Weights ⚙️</button>
+                        </div>
+                    </div>
+
+                    <div class="setting-card">
+                        <div class="setting-info">
+                            <div class="setting-title">Platform Maintenance Mode</div>
+                            <div class="setting-desc">When enabled, only administrators can access platform content.</div>
+                        </div>
+                        <div class="setting-control">
+                            <span id="setting-maintenance-status" style="font-size: 0.85rem; font-weight: 700; color: #4ade80;">🟢 Live</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- User Inspection Modal -->
+    <div id="admin-user-modal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 760px;">
+            <div class="modal-header">
+                <h2 id="modal-user-title">User Telemetry</h2>
+                <button class="close-modal-btn" onclick="document.getElementById('admin-user-modal').classList.remove('active')">&times;</button>
+            </div>
+            <div class="modal-body-scroll" id="modal-user-content"></div>
+        </div>
+    </div>
+
+    <!-- User Status Modal -->
+    <div id="admin-status-modal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 id="modal-status-title">Manage Account Status</h2>
+                <button class="close-modal-btn" onclick="document.getElementById('admin-status-modal').classList.remove('active')">&times;</button>
+            </div>
+            <div class="modal-body-scroll">
+                <p id="modal-status-desc" style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px;"></p>
+                <div style="background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.2); padding: 12px; border-radius: 8px; font-size: 0.8rem; color: #a5b4fc; margin-bottom: 20px;">
+                    🛡️ <strong>Safety Guarantee:</strong> Changing status does not delete any completed problems, stars, streaks, achievements, or notes.
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button class="btn-secondary" onclick="document.getElementById('admin-status-modal').classList.remove('active')">Cancel</button>
+                    <button id="btn-confirm-status" class="btn-primary">Confirm Change</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add / Edit Problem Modal -->
+    <div id="admin-problem-modal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 760px;">
+            <div class="modal-header">
+                <h2 id="modal-problem-form-title">Add New DSA Problem</h2>
+                <button class="close-modal-btn" onclick="document.getElementById('admin-problem-modal').classList.remove('active')">&times;</button>
+            </div>
+
+            <div class="modal-body-scroll">
+                <div id="modal-problem-error" style="display: none; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.4); color: #f87171; padding: 12px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 16px;"></div>
+
+                <form id="admin-problem-form">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                        <div style="grid-column: 1 / -1;">
+                            <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 6px;">Problem Title *</label>
+                            <input type="text" id="modal-prob-title" class="admin-search-input" placeholder="e.g., Two Sum, Trapping Rainwater" style="width: 100%;" required>
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 6px;">Problem URL</label>
+                            <input type="url" id="modal-prob-url" class="admin-search-input" placeholder="https://leetcode.com/problems/..." style="width: 100%;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 6px;">Platform</label>
+                            <select id="modal-prob-platform" class="admin-search-input" style="width: 100%; cursor: pointer;">
+                                <option value="LeetCode">LeetCode</option>
+                                <option value="GeeksforGeeks">GeeksforGeeks</option>
+                                <option value="CodeChef">CodeChef</option>
+                                <option value="CodeForces">CodeForces</option>
+                                <option value="AtCoder">AtCoder</option>
+                                <option value="HackerRank">HackerRank</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 6px;">Difficulty</label>
+                            <select id="modal-prob-difficulty" class="admin-search-input" style="width: 100%; cursor: pointer;">
+                                <option value="Easy">🟢 Easy</option>
+                                <option value="Medium" selected>🟡 Medium</option>
+                                <option value="Hard">🔴 Hard</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Cascading Taxonomy Section -->
+                    <div style="background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.2); border-radius: 10px; padding: 16px; margin-bottom: 16px;">
+                        <h4 style="font-size: 0.88rem; font-weight: 700; color: #a5b4fc; margin-bottom: 12px;">Dynamic CodeOrbit Taxonomy Hierarchy</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                            <div>
+                                <label style="display: block; font-size: 0.78rem; font-weight: 700; margin-bottom: 4px;">1. Phase</label>
+                                <select id="modal-prob-phase" class="admin-search-input" style="width: 100%; cursor: pointer;">
+                                    <option value="Foundation">Foundation</option>
+                                    <option value="Core Data Structures">Core Data Structures</option>
+                                    <option value="Algorithms">Algorithms</option>
+                                    <option value="Advanced Data Structures">Advanced Data Structures</option>
+                                    <option value="Patterns">Patterns</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.78rem; font-weight: 700; margin-bottom: 4px;">2. Section</label>
+                                <select id="modal-prob-section" class="admin-search-input" style="width: 100%; cursor: pointer;"></select>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.78rem; font-weight: 700; margin-bottom: 4px;">3. Topic</label>
+                                <select id="modal-prob-topic" class="admin-search-input" style="width: 100%; cursor: pointer;"></select>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 0.78rem; font-weight: 700; margin-bottom: 4px;">4. Card / Category (Subtopic)</label>
+                                <select id="modal-prob-category" class="admin-search-input" style="width: 100%; cursor: pointer;"></select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 20px;">
+                        <div>
+                            <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 6px;">Numerical Order</label>
+                            <input type="number" id="modal-prob-order" class="admin-search-input" value="1" style="width: 100%;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 6px;">Publishing Status</label>
+                            <select id="modal-prob-status" class="admin-search-input" style="width: 100%; cursor: pointer;">
+                                <option value="published">🟢 Published (Live to Users)</option>
+                                <option value="draft">🟡 Draft (Hidden)</option>
+                                <option value="archived">⚪ Archived</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 6px;">Curriculum Level</label>
+                            <select id="modal-prob-level" class="admin-search-input" style="width: 100%; cursor: pointer;">
+                                <option value="BEGINNER">BEGINNER</option>
+                                <option value="CORE">CORE</option>
+                                <option value="INTERMEDIATE" selected>INTERMEDIATE</option>
+                                <option value="ADVANCED">ADVANCED</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 24px;">
+                        <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 6px;">Tags (comma separated)</label>
+                        <input type="text" id="modal-prob-tags" class="admin-search-input" placeholder="Array, Hash Table, Two Pointers" style="width: 100%;">
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('admin-problem-modal').classList.remove('active')">Cancel</button>
+                        <button type="submit" id="btn-save-problem" class="btn-primary" style="padding: 10px 24px;">Save Problem</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Archive Confirmation Modal -->
+    <div id="admin-archive-modal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 540px;">
+            <div class="modal-header">
+                <h2 id="archive-modal-prob-title">Archive Problem</h2>
+                <button class="close-modal-btn" onclick="document.getElementById('admin-archive-modal').classList.remove('active')">&times;</button>
+            </div>
+            <div class="modal-body-scroll">
+                <div id="archive-modal-dependency-info">Checking dependencies...</div>
+                <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+                    <button class="btn-secondary" onclick="document.getElementById('admin-archive-modal').classList.remove('active')">Cancel</button>
+                    <button id="btn-confirm-archive" class="btn-primary" style="background: #ef4444; border-color: #ef4444;">Confirm Archive 📦</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Announcement Modal -->
+    <div id="admin-announcement-modal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 620px;">
+            <div class="modal-header">
+                <h2 id="modal-announcement-title">Create Announcement</h2>
+                <button class="close-modal-btn" onclick="document.getElementById('admin-announcement-modal').classList.remove('active')">&times;</button>
+            </div>
+            <div class="modal-body-scroll">
+                <form id="admin-announcement-form">
+                    <input type="hidden" id="modal-announcement-id">
+                    <div class="form-group-admin">
+                        <label for="modal-announcement-heading">Announcement Title *</label>
+                        <input type="text" id="modal-announcement-heading" class="form-input-admin" placeholder="e.g., New DSA Challenge starts today 🔥" required>
+                    </div>
+                    <div class="form-group-admin">
+                        <label for="modal-announcement-message">Message / Details *</label>
+                        <textarea id="modal-announcement-message" class="form-input-admin" rows="3" placeholder="Description visible to all users on main platform..." required></textarea>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group-admin">
+                            <label for="modal-announcement-category">Category</label>
+                            <select id="modal-announcement-category" class="form-input-admin">
+                                <option value="Challenge">🔥 Challenge</option>
+                                <option value="Contest">🏆 Contest</option>
+                                <option value="Update">⚡ Platform Update</option>
+                                <option value="General">📢 General</option>
+                            </select>
+                        </div>
+                        <div class="form-group-admin">
+                            <label for="modal-announcement-status">Publish Status</label>
+                            <select id="modal-announcement-status" class="form-input-admin">
+                                <option value="published">🟢 Published (Live on Main Site)</option>
+                                <option value="draft">🟡 Draft (Hidden)</option>
+                                <option value="archived">⚪ Archived</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
+                        <div class="form-group-admin">
+                            <label for="modal-announcement-link">Optional CTA Link URL</label>
+                            <input type="url" id="modal-announcement-link" class="form-input-admin" placeholder="https://...">
+                        </div>
+                        <div class="form-group-admin">
+                            <label for="modal-announcement-btntext">Button Text</label>
+                            <input type="text" id="modal-announcement-btntext" class="form-input-admin" value="View Challenge">
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('admin-announcement-modal').classList.remove('active')">Cancel</button>
+                        <button type="submit" class="btn-primary" style="padding: 10px 24px;">Save Announcement</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contest Modal -->
+    <div id="admin-contest-modal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 620px;">
+            <div class="modal-header">
+                <h2 id="modal-contest-title">Add Contest</h2>
+                <button class="close-modal-btn" onclick="document.getElementById('admin-contest-modal').classList.remove('active')">&times;</button>
+            </div>
+            <div class="modal-body-scroll">
+                <form id="admin-contest-form">
+                    <input type="hidden" id="modal-contest-id">
+                    <div class="form-group-admin">
+                        <label for="modal-contest-heading">Contest Title *</label>
+                        <input type="text" id="modal-contest-heading" class="form-input-admin" placeholder="e.g., Weekly Contest 440" required>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group-admin">
+                            <label for="modal-contest-platform">Platform *</label>
+                            <select id="modal-contest-platform" class="form-input-admin">
+                                <option value="LeetCode">LeetCode</option>
+                                <option value="CodeChef">CodeChef</option>
+                                <option value="CodeForces">CodeForces</option>
+                                <option value="AtCoder">AtCoder</option>
+                                <option value="GeeksforGeeks">GeeksforGeeks</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group-admin">
+                            <label for="modal-contest-category">Level</label>
+                            <select id="modal-contest-category" class="form-input-admin">
+                                <option value="EASY">EASY</option>
+                                <option value="MEDIUM" selected>MEDIUM</option>
+                                <option value="ADVANCED">ADVANCED</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group-admin">
+                        <label for="modal-contest-url">Contest URL *</label>
+                        <input type="url" id="modal-contest-url" class="form-input-admin" placeholder="https://..." required>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group-admin">
+                            <label for="modal-contest-start">Start Date & Time *</label>
+                            <input type="datetime-local" id="modal-contest-start" class="form-input-admin" required>
+                        </div>
+                        <div class="form-group-admin">
+                            <label for="modal-contest-end">End Date & Time *</label>
+                            <input type="datetime-local" id="modal-contest-end" class="form-input-admin" required>
+                        </div>
+                    </div>
+                    <div class="form-group-admin">
+                        <label for="modal-contest-status">Publish Status</label>
+                        <select id="modal-contest-status" class="form-input-admin">
+                            <option value="published">🟢 Published</option>
+                            <option value="draft">🟡 Draft</option>
+                            <option value="archived">⚪ Archived</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('admin-contest-modal').classList.remove('active')">Cancel</button>
+                        <button type="submit" class="btn-primary" style="padding: 10px 24px;">Save Contest</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Setting Confirmation Modal -->
+    <div id="admin-setting-confirm-modal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Confirm Platform Setting Update</h2>
+                <button class="close-modal-btn" onclick="document.getElementById('admin-setting-confirm-modal').classList.remove('active')">&times;</button>
+            </div>
+            <div class="modal-body-scroll">
+                <p id="modal-setting-summary" style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 20px;"></p>
+                <div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.25); padding: 12px; border-radius: 8px; font-size: 0.8rem; color: #86efac; margin-bottom: 20px;">
+                    ⚡ This setting will immediately update Supabase and propagate to all active student clients.
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button class="btn-secondary" onclick="document.getElementById('admin-setting-confirm-modal').classList.remove('active')">Cancel</button>
+                    <button id="btn-confirm-save-setting" class="btn-primary">Apply Update</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/data.js"></script>
+    <script src="js/roadmap.js"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/services/auth-service.js"></script>
+    <script src="js/services/profile-service.js"></script>
+    <script src="js/services/progress-service.js"></script>
+    <script src="js/services/stats-service.js"></script>
+    <script src="js/services/activity-service.js"></script>
+    <script src="js/services/challenge-service.js"></script>
+    <script src="js/services/contest-service.js"></script>
+    <script src="js/services/roadmap-service.js"></script>
+    <script src="js/services/leaderboard-service.js"></script>
+    <script src="js/services/problem-service.js"></script>
+    <script src="js/services/settings-service.js"></script>
+    <script src="js/services/announcement-service.js"></script>
+    <script src="js/services/admin-service.js"></script>
+    <script src="js/daily-mission.js"></script>
+    <script src="js/admin-dashboard.js"></script>
+    <script src="js/admin-users.js"></script>
+    <script src="js/admin-problems.js"></script>
+    <script src="js/admin-contests.js"></script>
+    <script src="js/admin-analytics.js"></script>
+    <script src="js/admin-settings.js"></script>
+</body>
+</html>

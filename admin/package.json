@@ -1,0 +1,11 @@
+{
+  "name": "codeorbit-admin",
+  "version": "1.0.0",
+  "description": "CodeOrbit — Standalone Platform Administration Portal",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx -y serve -l 3001 .",
+    "start": "npx -y serve -l 3001 ."
+  },
+  "license": "ISC"
+}

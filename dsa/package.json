@@ -1,0 +1,11 @@
+{
+  "name": "codeorbit-dsa",
+  "version": "1.0.0",
+  "description": "CodeOrbit — Main DSA Practice & Learning Platform",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx -y serve -l 3000 .",
+    "start": "npx -y serve -l 3000 ."
+  },
+  "license": "ISC"
+}

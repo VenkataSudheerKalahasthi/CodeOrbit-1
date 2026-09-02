@@ -3,24 +3,23 @@ node_modules/
 
 # Environment variables and secrets
 .env
-.env.local
-.env.development
-.env.development.local
-.env.test
-.env.test.local
-.env.production
-.env.production.local
+.env.*
+!.env.example
 
-# Build files
+# Build & Deploy
 dist/
 build/
+.vercel/
 .next/
+coverage/
 
 # Logs
+logs/
 *.log
 
 # OS files
 .DS_Store
 Thumbs.db
 
+# Scratch / Local Testing
 scratch/

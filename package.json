@@ -1,11 +1,17 @@
 {
-  "name": "dsa-tracker",
+  "name": "codeorbit-monorepo",
   "version": "1.0.0",
-  "description": "DSA Master - Practice & Progress Tracker",
-  "main": "index.html",
+  "description": "CodeOrbit — Separated Architecture (DSA Platform, Admin Portal, Render Backend, Supabase Database)",
+  "main": "dsa/index.html",
   "scripts": {
-    "start": "npx -y serve -l 3000 .",
-    "dev": "npx -y serve -l 3000 ."
+    "dev": "npx -y serve -l 3000 dsa",
+    "start": "npx -y serve -l 3000 dsa",
+    "dev:dsa": "npx -y serve -l 3000 dsa",
+    "dev:admin": "npx -y serve -l 3001 admin",
+    "dev:backend": "node backend/server.js",
+    "start:dsa": "npx -y serve -l 3000 dsa",
+    "start:admin": "npx -y serve -l 3001 admin",
+    "start:backend": "node backend/server.js"
   },
   "license": "ISC",
   "dependencies": {
