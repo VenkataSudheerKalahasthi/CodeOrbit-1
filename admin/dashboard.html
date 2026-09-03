@@ -644,6 +644,41 @@
         </div>
     </div>
 
+    <!-- User Deletion Confirmation Modal -->
+    <div id="admin-delete-user-modal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 520px; border: 1px solid rgba(239, 68, 68, 0.4);">
+            <div class="modal-header" style="border-bottom: 1px solid rgba(239, 68, 68, 0.2);">
+                <h2 id="modal-delete-title" style="color: #ef4444; display: flex; align-items: center; gap: 8px;">
+                    <span>⚠️</span> Permanent User Deletion
+                </h2>
+                <button class="close-modal-btn" onclick="AdminController.closeDeleteUserModal()">&times;</button>
+            </div>
+            <div class="modal-body-scroll">
+                <div id="modal-delete-error" style="display: none; background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.4); color: #f87171; padding: 12px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 16px;"></div>
+
+                <p style="font-size: 0.9rem; color: var(--text-color); margin-bottom: 14px;">
+                    Are you sure you want to permanently delete user <strong id="modal-delete-username" style="color: #fff;"></strong>?
+                </p>
+
+                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 0.82rem; font-family: monospace;">
+                    <div style="margin-bottom: 4px; color: var(--text-muted);">Email: <span id="modal-delete-email" style="color: #e2e8f0;"></span></div>
+                    <div style="color: var(--text-muted);">User ID: <span id="modal-delete-id" style="color: #94a3b8;"></span></div>
+                </div>
+
+                <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); padding: 14px; border-radius: 8px; font-size: 0.82rem; color: #fca5a5; line-height: 1.5; margin-bottom: 20px;">
+                    <strong>⛔ IRREVERSIBLE ACTION:</strong> This will permanently delete the user's authentication account, profile, all completed problems, practice streaks, notes, star telemetry, and contest records. This action cannot be undone.
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 12px;">
+                    <button class="btn-secondary" onclick="AdminController.closeDeleteUserModal()">Cancel</button>
+                    <button id="btn-confirm-delete-user" class="btn-primary" style="background: linear-gradient(135deg, #ef4444, #dc2626); border-color: #ef4444;" onclick="AdminController.confirmDeleteUser()">
+                        Permanently Delete User
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Add / Edit Problem Modal -->
     <div id="admin-problem-modal" class="modal-overlay">
         <div class="modal-box" style="max-width: 760px;">

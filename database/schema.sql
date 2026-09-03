@@ -566,6 +566,86 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.get_competitive_leaderboard(TEXT, INT) TO anon, authenticated, service_role;
 
+-- =============================================================================
+-- SECURE ADMIN USER DELETION FUNCTION (SECURITY DEFINER)
+-- Allows verified Admins to permanently delete a user and all child data.
+-- =============================================================================
+CREATE OR REPLACE FUNCTION public.admin_delete_user(target_user_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+    v_admin_id UUID;
+    v_target_email TEXT;
+    v_target_username TEXT;
+BEGIN
+    v_admin_id := auth.uid();
+
+    -- 1. Authorization check: Executing user MUST be an admin
+    IF v_admin_id IS NULL OR NOT public.is_admin() THEN
+        RAISE EXCEPTION 'Forbidden: Administrator privileges required to delete users.';
+    END IF;
+
+    -- 2. Self-deletion protection: Admin cannot delete their own account
+    IF target_user_id = v_admin_id THEN
+        RAISE EXCEPTION 'Self-deletion prohibited: Platform administrators cannot delete their own account.';
+    END IF;
+
+    -- 3. Verify target user exists
+    SELECT email INTO v_target_email FROM auth.users WHERE id = target_user_id;
+    SELECT username INTO v_target_username FROM public.profiles WHERE id = target_user_id;
+
+    IF v_target_email IS NULL AND v_target_username IS NULL THEN
+        RAISE EXCEPTION 'User not found: Target user ID does not exist.';
+    END IF;
+
+    -- 4. Record audit log BEFORE deletion
+    BEGIN
+        INSERT INTO public.admin_audit_logs (
+            admin_id,
+            action,
+            target_type,
+            target_id,
+            details,
+            created_at
+        ) VALUES (
+            v_admin_id,
+            'DELETE_USER',
+            'user',
+            target_user_id::TEXT,
+            jsonb_build_object(
+                'email', COALESCE(v_target_email, 'unknown'),
+                'username', COALESCE(v_target_username, 'unknown'),
+                'deleted_by_admin_id', v_admin_id,
+                'timestamp', now()
+            ),
+            now()
+        );
+    EXCEPTION WHEN OTHERS THEN
+        -- Non-blocking audit log catch as required by spec
+        RAISE WARNING 'Admin audit log recording failed: %', SQLERRM;
+    END;
+
+    -- 5. Delete from auth.users (cascades to public.profiles, stats, notes, progress, etc.)
+    DELETE FROM auth.users WHERE id = target_user_id;
+
+    -- In case profile existed separately without auth cascade, ensure complete profile cleanup
+    DELETE FROM public.profiles WHERE id = target_user_id;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'deleted_user_id', target_user_id,
+        'deleted_email', v_target_email,
+        'deleted_username', v_target_username,
+        'message', 'User and all associated data have been permanently deleted.'
+    );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.admin_delete_user(UUID) TO authenticated, service_role;
+
 -- Seed standard achievements baseline
 INSERT INTO public.achievements (id, name, description, icon, requirement)
 VALUES 
@@ -597,114 +677,145 @@ ALTER TABLE public.problems ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- 1. profiles: Public read (for leaderboard/display), user update own, admin full
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
 CREATE POLICY "Public profiles are viewable by everyone"
     ON public.profiles FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile"
     ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
 CREATE POLICY "Users can insert own profile"
     ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Admins can manage all profiles" ON public.profiles;
 CREATE POLICY "Admins can manage all profiles"
     ON public.profiles FOR ALL USING (public.is_admin());
 
 -- 2. problem_progress: User private, Admin view
+DROP POLICY IF EXISTS "Users can manage own problem progress" ON public.problem_progress;
 CREATE POLICY "Users can manage own problem progress"
     ON public.problem_progress FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Admins can view all problem progress" ON public.problem_progress;
 CREATE POLICY "Admins can view all problem progress"
     ON public.problem_progress FOR SELECT USING (public.is_admin());
 
 -- 3. user_activity: User private, Admin view
+DROP POLICY IF EXISTS "Users can manage own activity" ON public.user_activity;
 CREATE POLICY "Users can manage own activity"
     ON public.user_activity FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Admins can view all user activity" ON public.user_activity;
 CREATE POLICY "Admins can view all user activity"
     ON public.user_activity FOR SELECT USING (public.is_admin());
 
 -- 4. user_stats: Viewable for leaderboard, user update own, Admin view all
+DROP POLICY IF EXISTS "User stats are viewable for leaderboard" ON public.user_stats;
 CREATE POLICY "User stats are viewable for leaderboard"
     ON public.user_stats FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Users can update own stats" ON public.user_stats;
 CREATE POLICY "Users can update own stats"
     ON public.user_stats FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Admins can manage all user stats" ON public.user_stats;
 CREATE POLICY "Admins can manage all user stats"
     ON public.user_stats FOR ALL USING (public.is_admin());
 
 -- 5. achievements: Public viewable, Admin manage
+DROP POLICY IF EXISTS "Achievements are viewable by everyone" ON public.achievements;
 CREATE POLICY "Achievements are viewable by everyone"
     ON public.achievements FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Admins can manage achievements" ON public.achievements;
 CREATE POLICY "Admins can manage achievements"
     ON public.achievements FOR ALL USING (public.is_admin());
 
 -- 6. user_achievements: User private & viewable for profile, Admin view
+DROP POLICY IF EXISTS "Users can manage own achievements" ON public.user_achievements;
 CREATE POLICY "Users can manage own achievements"
     ON public.user_achievements FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "User achievements viewable" ON public.user_achievements;
 CREATE POLICY "User achievements viewable"
     ON public.user_achievements FOR SELECT USING (true);
 
+DROP POLICY IF EXISTS "Admins can view all user achievements" ON public.user_achievements;
 CREATE POLICY "Admins can view all user achievements"
     ON public.user_achievements FOR SELECT USING (public.is_admin());
 
 -- 7. contest_activity: User private, Admin view
+DROP POLICY IF EXISTS "Users can manage own contest activity" ON public.contest_activity;
 CREATE POLICY "Users can manage own contest activity"
     ON public.contest_activity FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Admins can view all contest activity" ON public.contest_activity;
 CREATE POLICY "Admins can view all contest activity"
     ON public.contest_activity FOR SELECT USING (public.is_admin());
 
 -- 8. daily_challenges: User private, Admin view
+DROP POLICY IF EXISTS "Users can manage own daily challenges" ON public.daily_challenges;
 CREATE POLICY "Users can manage own daily challenges"
     ON public.daily_challenges FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Admins can view all daily challenges" ON public.daily_challenges;
 CREATE POLICY "Admins can view all daily challenges"
     ON public.daily_challenges FOR SELECT USING (public.is_admin());
 
 -- 9. problem_notes: Strictly private to user
+DROP POLICY IF EXISTS "Users can manage own problem notes" ON public.problem_notes;
 CREATE POLICY "Users can manage own problem notes"
     ON public.problem_notes FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- 10. problem_favorites: Strictly private to user
+DROP POLICY IF EXISTS "Users can manage own problem favorites" ON public.problem_favorites;
 CREATE POLICY "Users can manage own problem favorites"
     ON public.problem_favorites FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- 11. roadmap_progress: User private, Admin view
+DROP POLICY IF EXISTS "Users can manage own roadmap progress" ON public.roadmap_progress;
 CREATE POLICY "Users can manage own roadmap progress"
     ON public.roadmap_progress FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Admins can view all roadmap progress" ON public.roadmap_progress;
 CREATE POLICY "Admins can view all roadmap progress"
     ON public.roadmap_progress FOR SELECT USING (public.is_admin());
 
 -- 12. user_roles: Only users can read their own role; only Admins can manage roles
+DROP POLICY IF EXISTS "Users can read own role" ON public.user_roles;
 CREATE POLICY "Users can read own role"
     ON public.user_roles FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Admins can manage roles" ON public.user_roles;
 CREATE POLICY "Admins can manage roles"
     ON public.user_roles FOR ALL USING (public.is_admin());
 
 -- 13. problems: Public read only published problems, Admin full management
+DROP POLICY IF EXISTS "Public can view published problems" ON public.problems;
 CREATE POLICY "Public can view published problems"
     ON public.problems FOR SELECT
     USING (status = 'published' OR public.is_admin());
 
+DROP POLICY IF EXISTS "Admins can insert problems" ON public.problems;
 CREATE POLICY "Admins can insert problems"
     ON public.problems FOR INSERT
     WITH CHECK (public.is_admin());
 
+DROP POLICY IF EXISTS "Admins can update problems" ON public.problems;
 CREATE POLICY "Admins can update problems"
     ON public.problems FOR UPDATE
     USING (public.is_admin())
     WITH CHECK (public.is_admin());
 
+DROP POLICY IF EXISTS "Admins can delete problems" ON public.problems;
 CREATE POLICY "Admins can delete problems"
     ON public.problems FOR DELETE
     USING (public.is_admin());
 
 -- 14. admin_audit_logs: Admins only
+DROP POLICY IF EXISTS "Admins can manage audit logs" ON public.admin_audit_logs;
 CREATE POLICY "Admins can manage audit logs"
     ON public.admin_audit_logs FOR ALL
     USING (public.is_admin())
@@ -713,6 +824,7 @@ CREATE POLICY "Admins can manage audit logs"
 -- 15. announcements: Public can view active published announcements, Admin full management
 ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Public can view published announcements" ON public.announcements;
 CREATE POLICY "Public can view published announcements"
     ON public.announcements FOR SELECT
     USING (
@@ -722,6 +834,7 @@ CREATE POLICY "Public can view published announcements"
         OR public.is_admin()
     );
 
+DROP POLICY IF EXISTS "Admins can manage announcements" ON public.announcements;
 CREATE POLICY "Admins can manage announcements"
     ON public.announcements FOR ALL
     USING (public.is_admin())
@@ -730,10 +843,12 @@ CREATE POLICY "Admins can manage announcements"
 -- 16. contests: Public can view published contests, Admin full management
 ALTER TABLE public.contests ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Public can view published contests" ON public.contests;
 CREATE POLICY "Public can view published contests"
     ON public.contests FOR SELECT
     USING (status = 'published' OR public.is_admin());
 
+DROP POLICY IF EXISTS "Admins can manage contests" ON public.contests;
 CREATE POLICY "Admins can manage contests"
     ON public.contests FOR ALL
     USING (public.is_admin())
@@ -742,10 +857,12 @@ CREATE POLICY "Admins can manage contests"
 -- 17. platform_settings: Public read, Admin manage
 ALTER TABLE public.platform_settings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Settings are viewable by everyone" ON public.platform_settings;
 CREATE POLICY "Settings are viewable by everyone"
     ON public.platform_settings FOR SELECT
     USING (true);
 
+DROP POLICY IF EXISTS "Admins can manage platform settings" ON public.platform_settings;
 CREATE POLICY "Admins can manage platform settings"
     ON public.platform_settings FOR ALL
     USING (public.is_admin())

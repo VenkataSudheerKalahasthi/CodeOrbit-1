@@ -324,6 +324,93 @@ const AdminService = {
     },
 
     /**
+     * Get backend API base URL
+     */
+    getBackendUrl() {
+        if (typeof window.__ENV__ !== 'undefined' && window.__ENV__.BACKEND_URL) {
+            return window.__ENV__.BACKEND_URL;
+        }
+        if (typeof window.location !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+            return 'http://localhost:5000';
+        }
+        return 'https://codeorbit-backend-vbjx.onrender.com';
+    },
+
+    /**
+     * Permanently Delete a User (Admin Only)
+     * Cascades deletion across auth.users, profiles, progress, streaks, stats, notes, activity, etc.
+     */
+    async deleteUser(userId) {
+        if (!this.client || !userId) throw new Error('User ID is required.');
+
+        // 1. Verify admin privilege before proceeding
+        const isAdmin = await this.checkIsAdmin();
+        if (!isAdmin) {
+            throw new Error('Unauthorized: Administrator privileges required to delete users.');
+        }
+
+        // 2. Prevent self-deletion on frontend
+        const { data: { user } } = await this.client.auth.getUser();
+        if (user && user.id.toLowerCase() === userId.toLowerCase()) {
+            throw new Error('Self-deletion prohibited: Platform administrators cannot delete their own account.');
+        }
+
+        let deletionSuccess = false;
+        let lastErrorMessage = '';
+
+        // 3. Attempt deletion via Render Backend API (uses Admin verification and service layer)
+        try {
+            const { data: { session } } = await this.client.auth.getSession();
+            const token = session?.access_token;
+            if (token) {
+                const backendUrl = this.getBackendUrl();
+                const resp = await fetch(`${backendUrl}/api/admin/users/${userId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (resp.ok) {
+                    const result = await resp.json();
+                    if (result.success) {
+                        deletionSuccess = true;
+                        return result;
+                    }
+                } else {
+                    const errJson = await resp.json().catch(() => ({}));
+                    lastErrorMessage = errJson.error || `Backend returned status ${resp.status}`;
+                }
+            }
+        } catch (fetchErr) {
+            console.warn('Backend deleteUser call failed, attempting database RPC fallback:', fetchErr.message);
+        }
+
+        // 4. Attempt deletion via direct Supabase PostgreSQL RPC (Security Definer)
+        if (!deletionSuccess) {
+            try {
+                const { data, error } = await this.client.rpc('admin_delete_user', { target_user_id: userId });
+                if (!error && (data?.success || data === true)) {
+                    deletionSuccess = true;
+                    return data;
+                }
+                if (error) {
+                    lastErrorMessage = error.message || lastErrorMessage;
+                }
+            } catch (rpcErr) {
+                console.warn('RPC admin_delete_user failed:', rpcErr.message);
+                lastErrorMessage = rpcErr.message || lastErrorMessage;
+            }
+        }
+
+        // 5. If both failed, throw error
+        if (!deletionSuccess) {
+            throw new Error(lastErrorMessage || 'Failed to delete user. Please ensure admin permissions.');
+        }
+    },
+
+    /**
      * Fetch complete drill-down for a single user (Admin Only)
      */
     async getUserDetail(userId) {

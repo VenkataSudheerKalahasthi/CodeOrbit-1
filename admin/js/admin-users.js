@@ -16,5 +16,10 @@ window.AdminUsers = {
         if (window.AdminController) {
             return window.AdminController.openStatusModal(userId, currentStatus);
         }
+    },
+    async deleteUser(userId, username = '', email = '') {
+        if (window.AdminController) {
+            return window.AdminController.openDeleteUserModal(userId, username, email);
+        }
     }
 };

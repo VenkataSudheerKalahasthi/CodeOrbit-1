@@ -36,6 +36,7 @@ const AdminController = (function () {
 
     // Pending Action State for Modals
     let _pendingStatusChange = null;
+    let _pendingUserDelete = null;
     let _pendingSettingChange = null;
     let _currentEditingContestId = null;
     let _currentEditingAnnouncementId = null;
@@ -635,6 +636,16 @@ const AdminController = (function () {
             if (!tbody) return;
 
             try {
+                // Determine currently logged-in admin to prevent self-deletion
+                let currentAdminId = '';
+                try {
+                    const client = window.SupabaseConfig ? window.SupabaseConfig.getClient() : null;
+                    if (client) {
+                        const { data: { user } } = await client.auth.getUser();
+                        currentAdminId = user?.id || '';
+                    }
+                } catch (_) {}
+
                 const users = await AdminService.getUsersList(query, statusFilter);
                 if (users.length === 0) {
                     tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--text-muted); padding: 24px;">No users found.</td></tr>`;
@@ -646,6 +657,10 @@ const AdminController = (function () {
                     const joined = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—';
                     const lastActive = u.lastActiveAt ? new Date(u.lastActiveAt).toLocaleDateString() : '—';
                     const isSuspended = u.status === 'suspended';
+                    const isSelf = currentAdminId && u.id.toLowerCase() === currentAdminId.toLowerCase();
+
+                    const safeUsername = (u.username || '').replace(/'/g, "\\'");
+                    const safeEmail = (u.email || '').replace(/'/g, "\\'");
 
                     return `
                         <tr>
@@ -653,7 +668,7 @@ const AdminController = (function () {
                                 <div class="admin-user-cell">
                                     <div class="admin-user-avatar">${avatar}</div>
                                     <div>
-                                        <div style="font-weight: 700;">${u.username}</div>
+                                        <div style="font-weight: 700;">${u.username} ${isSelf ? '<span style="font-size:0.7rem; color:#818cf8; font-weight:600;">(You)</span>' : ''}</div>
                                         <div style="font-size: 0.72rem; color: var(--text-muted); font-family: monospace;">${u.id.substring(0, 8)}...</div>
                                     </div>
                                 </div>
@@ -668,11 +683,15 @@ const AdminController = (function () {
                                 <span class="status-badge ${u.status}">${isSuspended ? '🔴 Suspended' : '🟢 Active'}</span>
                             </td>
                             <td>
-                                <div style="display: flex; gap: 6px;">
-                                    <button class="btn-inspect" onclick="AdminController.inspectUser('${u.id}')">Inspect 🔍</button>
-                                    <button class="${isSuspended ? 'btn-inspect' : 'btn-danger-outline'}" onclick="AdminController.openUserStatusModal('${u.id}', '${u.username}', '${u.status}')">
+                                <div style="display: flex; gap: 6px; align-items: center;">
+                                    <button class="btn-inspect" onclick="AdminController.inspectUser('${u.id}')" title="Inspect User Telemetry">Inspect 🔍</button>
+                                    <button class="${isSuspended ? 'btn-inspect' : 'btn-danger-outline'}" onclick="AdminController.openUserStatusModal('${u.id}', '${safeUsername}', '${u.status}')" title="${isSuspended ? 'Reactivate' : 'Suspend'}">
                                         ${isSuspended ? 'Activate ⚡' : 'Suspend ⛔'}
                                     </button>
+                                    ${!isSelf ? `
+                                    <button class="btn-danger-outline" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);" onclick="AdminController.openDeleteUserModal('${u.id}', '${safeUsername}', '${safeEmail}')" title="Permanently Delete User & All Data">
+                                        Delete 🗑️
+                                    </button>` : ''}
                                 </div>
                             </td>
                         </tr>
@@ -696,6 +715,8 @@ const AdminController = (function () {
                 if (title) title.textContent = `Telemetry: ${d.profile?.username || userId}`;
 
                 const completedCount = (d.progress || []).filter(p => p.completed).length;
+                const safeUsername = (d.profile?.username || '').replace(/'/g, "\\'");
+                const safeEmail = (d.profile?.email || '').replace(/'/g, "\\'");
 
                 content.innerHTML = `
                     <div class="detail-grid">
@@ -737,6 +758,13 @@ const AdminController = (function () {
                               `).join('')}
                         </div>
                     </div>
+
+                    <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: flex-end; gap: 10px;">
+                        <button class="btn-secondary" onclick="document.getElementById('admin-user-modal').classList.remove('active')">Close</button>
+                        <button class="btn-danger-outline" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.4);" onclick="AdminController.openDeleteUserModal('${d.profile?.id}', '${safeUsername}', '${safeEmail}')">
+                            Delete Account 🗑️
+                        </button>
+                    </div>
                 `;
             } catch (e) {
                 if (content) content.innerHTML = `<div style="padding: 24px; text-align: center; color: #f87171;">Failed to load user telemetry: ${e.message}</div>`;
@@ -761,6 +789,84 @@ const AdminController = (function () {
             }
 
             if (modal) modal.classList.add('active');
+        },
+
+        openDeleteUserModal(userId, username, email) {
+            const modal = document.getElementById('admin-delete-user-modal');
+            const elUser = document.getElementById('modal-delete-username');
+            const elEmail = document.getElementById('modal-delete-email');
+            const elId = document.getElementById('modal-delete-id');
+            const elErr = document.getElementById('modal-delete-error');
+            const confirmBtn = document.getElementById('btn-confirm-delete-user');
+
+            if (elErr) {
+                elErr.style.display = 'none';
+                elErr.textContent = '';
+            }
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Permanently Delete User';
+            }
+
+            if (elUser) elUser.textContent = username || 'User';
+            if (elEmail) elEmail.textContent = email || '—';
+            if (elId) elId.textContent = userId;
+
+            _pendingUserDelete = { userId, username, email };
+
+            if (modal) modal.classList.add('active');
+        },
+
+        closeDeleteUserModal() {
+            const modal = document.getElementById('admin-delete-user-modal');
+            if (modal) modal.classList.remove('active');
+            _pendingUserDelete = null;
+        },
+
+        async confirmDeleteUser() {
+            if (!_pendingUserDelete || !_pendingUserDelete.userId) return;
+
+            const confirmBtn = document.getElementById('btn-confirm-delete-user');
+            const errBox = document.getElementById('modal-delete-error');
+            const userId = _pendingUserDelete.userId;
+            const username = _pendingUserDelete.username;
+
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.textContent = 'Deleting permanently...';
+            }
+            if (errBox) {
+                errBox.style.display = 'none';
+                errBox.textContent = '';
+            }
+
+            try {
+                await AdminService.deleteUser(userId);
+                
+                this.closeDeleteUserModal();
+
+                // Close inspection modal if open on the same user
+                const inspectModal = document.getElementById('admin-user-modal');
+                if (inspectModal) inspectModal.classList.remove('active');
+
+                // Refresh Users table only after verified backend success
+                await this.loadUsers(_userSearchQuery, _userStatusFilter);
+
+                alert(`User "${username}" (${userId}) has been permanently deleted.`);
+            } catch (err) {
+                console.error('Delete user failed:', err);
+                if (errBox) {
+                    errBox.textContent = 'Deletion Failed: ' + (err.message || 'An unexpected error occurred.');
+                    errBox.style.display = 'block';
+                } else {
+                    alert('Deletion Failed: ' + (err.message || 'Could not delete user.'));
+                }
+            } finally {
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.textContent = 'Permanently Delete User';
+                }
+            }
         },
 
         // =========================================================================
